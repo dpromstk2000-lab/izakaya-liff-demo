@@ -157,7 +157,7 @@
             };
 
             try {
-                // 【修正点】居酒屋専用の「izakaya_reservations」テーブルへ保存するよう指定
+                // 1. 居酒屋専用の「izakaya_reservations」テーブルへ保存
                 const { error } = await db
                     .from('izakaya_reservations')
                     .insert([reservationData]);
@@ -170,7 +170,17 @@
                     body: JSON.stringify(reservationData)
                 });
 
-                alert('予約の申請が完了しました！カレンダーとデータベースをご確認ください。');
+                // 【新規追加機能】コスト完全無料でトーク画面に自動控えを投稿する処理
+                if (liff.isInClient()) {
+                    await liff.sendMessages([
+                        {
+                            type: 'text',
+                            text: `🤖 予約申請を承りました\n\n${userProfile.displayName} 様、以下の内容で仮予約を受け付けました。店舗からの確定連絡をお待ちください。\n\n📅 種類：${reserveType}\n📅 日付：${reserveDate}\n⏰ 時間：${reserveTime}〜\n👤 人数：${partySize}名\n\n※まだ予約は確定しておりません。`
+                        }
+                    ]);
+                }
+
+                alert('予約の申請が完了しました！カレンダーとトーク画面の控えをご確認ください。');
                 liff.closeWindow();
 
             } catch (err) {
