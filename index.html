@@ -44,6 +44,11 @@
                     </div>
                 </div>
 
+                <div>
+                    <label class="block text-xs font-bold text-neutral-500 mb-1 uppercase tracking-wider">ご予約者名（ひらがな・漢字）</label>
+                    <input type="text" id="customer-name" required placeholder="例：いわぐち だいじろう" class="w-full border border-neutral-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-amber-600 bg-neutral-50">
+                </div>
+
                 <div id="date-group">
                     <label class="block text-xs font-bold text-neutral-500 mb-1 uppercase tracking-wider">ご来店日</label>
                     <input type="date" id="reserve-date" required class="w-full border border-neutral-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-amber-600 bg-neutral-50">
@@ -130,6 +135,9 @@
                     userProfile = await liff.getProfile();
                     document.getElementById('user-name').innerText = `${userProfile.displayName} 様`;
                     
+                    // 【お名前の初期値設定】入力欄の初期値として、一応LINEの表示名を自動で入れてあげる（親切設計）
+                    document.getElementById('customer-name').value = userProfile.displayName;
+                    
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('app').classList.remove('hidden');
                 }
@@ -143,13 +151,14 @@
             e.preventDefault();
             
             const reserveType = document.querySelector('input[name="reserve_type"]:checked').value;
+            const customerName = document.getElementById('customer-name').value; // 入力されたお名前を取得
             const reserveDate = document.getElementById('reserve-date').value;
             const reserveTime = document.getElementById('reserve-time').value;
             const partySize = parseInt(document.getElementById('party-size').value);
 
             const reservationData = {
                 line_user_id: userProfile.userId,
-                line_name: userProfile.displayName,
+                line_name: customerName, // 【変更点】アカウント名ではなく、入力されたお名前をDBとGASに送る
                 reserve_type: reserveType,
                 reserve_date: reserveDate,
                 reserve_time: reserveTime,
@@ -170,12 +179,12 @@
                     body: JSON.stringify(reservationData)
                 });
 
-                // 【新規追加機能】コスト完全無料でトーク画面に自動控えを投稿する処理
+                // コスト完全無料でトーク画面に自動控えを投稿する処理
                 if (liff.isInClient()) {
                     await liff.sendMessages([
                         {
                             type: 'text',
-                            text: `🤖 予約申請を承りました\n\n${userProfile.displayName} 様、以下の内容で仮予約を受け付けました。店舗からの確定連絡をお待ちください。\n\n📅 種類：${reserveType}\n📅 日付：${reserveDate}\n⏰ 時間：${reserveTime}〜\n👤 人数：${partySize}名\n\n※まだ予約は確定しておりません。`
+                            text: `🤖 予約申請を承りました\n\n${customerName} 様、以下の内容で仮予約を受け付けました。店舗からの確定連絡をお待ちください。\n\n📅 種類：${reserveType}\n📅 日付：${reserveDate}\n⏰ 時間：${reserveTime}〜\n👤 人数：${partySize}名\n\n※まだ予約は確定しておりません。`
                         }
                     ]);
                 }
