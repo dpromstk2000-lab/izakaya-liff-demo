@@ -84,19 +84,17 @@
     </footer>
 
     <script>
-        // ★★★ 控えておいた鍵（環境設定）をここに正確に貼り付けます ★★★
-        const LIFF_ID = "2010334558-3WGZGeu2
-"; 
-        const SUPABASE_URL = "https://cbknucemarcpbscirzyv.supabase.co/rest/v1/";
-        const SUPABASE_ANON_KEY = "sb_publishable_cT4vj0FoU1MtjFayuk7HVw_YcuSMR5J
-";
+        // 環境設定（途中の改行や不要なURL末尾を修正しました）
+        const LIFF_ID = "2010334558-3WGZGeu2"; 
+        const SUPABASE_URL = "https://cbknucemarcpbscirzyv.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_cT4vj0FoU1MtjFayuk7HVw_YcuSMR5J";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzPMQH8hTX6ky8z-kwp-xZbm7z_08biK4hCZ4AZHpoeiYBZktIUHyh_rX0zFD0p46-JcQ/exec";
 
         // Supabaseクライアントの初期化
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let userProfile = null;
 
-        // 予約タイプの切り替え演出用JS
+        // 予約タイプの切り替え
         function toggleType(type) {
             const labelNormal = document.getElementById('label-normal');
             const labelTonight = document.getElementById('label-tonight');
@@ -108,7 +106,6 @@
                 labelNormal.className = "border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold";
                 dateGroup.style.display = 'none';
                 
-                // 「今夜の空席」なら自動的に今日の「日付」をセット
                 const today = new Date().toISOString().split('T')[0];
                 dateInput.value = today;
             } else {
@@ -119,9 +116,8 @@
             }
         }
 
-        // ページが開いた瞬間にLINEと接続（LIFF初期化）
+        // ページ読み込み時のLIFF初期化
         window.addEventListener('DOMContentLoaded', async () => {
-            // 通常予約の日付選択の初期値（明日以降しか選べないようにする設定）
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             document.getElementById('reserve-date').min = tomorrow.toISOString().split('T')[0];
@@ -129,13 +125,11 @@
             try {
                 await liff.init({ liffId: LIFF_ID });
                 if (!liff.isLoggedIn()) {
-                    liff.login(); // ログインしていなければ自動でログイン画面へ
+                    liff.login();
                 } else {
-                    // LINEからユーザー情報を取得
                     userProfile = await liff.getProfile();
                     document.getElementById('user-name').innerText = `${userProfile.displayName} 様`;
                     
-                    // 画面の表示切り替え（ローディングを消してフォームを出す）
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('app').classList.remove('hidden');
                 }
@@ -144,16 +138,15 @@
             }
         });
 
-        // フォームが送信されたときの処理
+        // フォーム送信処理
         document.getElementById('reserve-form').addEventListener('submit', async (e) => {
-            e.preventDefault(); // 画面リロードを防ぐ
+            e.preventDefault();
             
             const reserveType = document.querySelector('input[name="reserve_type"]:checked').value;
             const reserveDate = document.getElementById('reserve-date').value;
             const reserveTime = document.getElementById('reserve-time').value;
             const partySize = parseInt(document.getElementById('party-size').value);
 
-            // 送信するデータの塊を作成
             const reservationData = {
                 line_user_id: userProfile.userId,
                 line_name: userProfile.displayName,
@@ -164,8 +157,7 @@
             };
 
             try {
-                // 1. Supabase（データベース）へ保存
-                // ★テーブル名はエラー回避用に作った「izakaya_reservations」を指定しています
+                // 1. Supabaseへ保存
                 const { error } = await supabase
                     .from('izakaya_reservations')
                     .insert([reservationData]);
@@ -175,11 +167,9 @@
                 // 2. Googleカレンダー（GAS）へ送信
                 await fetch(GAS_URL, {
                     method: 'POST',
-                    method: 'POST',
                     body: JSON.stringify(reservationData)
                 });
 
-                // 成功したらLINEの画面を自動で閉じる
                 alert('予約の申請が完了しました！カレンダーとデータベースをご確認ください。');
                 liff.closeWindow();
 
