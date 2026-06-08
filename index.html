@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>居酒屋 予約システム</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-amber-50 text-neutral-800 min-h-screen flex flex-col justify-between">
+
+    <header class="bg-amber-800 text-white text-center py-4 shadow-md">
+        <h1 class="text-xl font-bold tracking-wider">🏮 炭火焼 居酒屋デモ 🏮</h1>
+        <p class="text-xs text-amber-200 mt-1">LINE限定・カンタン予約システム</p>
+    </header>
+
+    <main class="p-4 max-w-md mx-auto w-full flex-grow">
+        <div id="loading" class="text-center py-12">
+            <p class="text-amber-800 animate-pulse font-medium">LINEログイン認証中...</p>
+        </div>
+
+        <div id="app" class="hidden bg-white p-6 rounded-2xl shadow-xl border border-amber-100">
+            <div class="mb-6 border-b border-amber-100 pb-3 flex items-center gap-3">
+                <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-lg">👤</div>
+                <div>
+                    <p class="text-xs text-neutral-400">いらっしゃいませ！</p>
+                    <p id="user-name" class="font-bold text-neutral-700">ゲスト 様</p>
+                </div>
+            </div>
+
+            <form id="reserve-form" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-neutral-500 mb-2 uppercase tracking-wider">予約の種類</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="border-2 border-amber-600 rounded-xl p-3 text-center cursor-pointer block bg-amber-50 text-amber-900 font-bold" id="label-normal">
+                            <input type="radio" name="reserve_type" value="通常予約" checked class="hidden" onchange="toggleType('normal')">
+                            📅 通常予約
+                        </label>
+                        <label class="border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold" id="label-tonight">
+                            <input type="radio" name="reserve_type" value="今夜の空席" class="hidden" onchange="toggleType('tonight')">
+                            ⚡ 今夜の空席
+                        </label>
+                    </div>
+                </div>
+
+                <div id="date-group">
+                    <label class="block text-xs font-bold text-neutral-500 mb-1 uppercase tracking-wider">ご来店日</label>
+                    <input type="date" id="reserve-date" required class="w-full border border-neutral-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-amber-600 bg-neutral-50">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-neutral-500 mb-1 uppercase tracking-wider">ご来店時間</label>
+                    <select id="reserve-time" required class="w-full border border-neutral-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-amber-600 bg-neutral-50">
+                        <option value="17:00">17:00</option>
+                        <option value="18:00">18:00</option>
+                        <option value="19:00">19:00</option>
+                        <option value="20:00">20:00</option>
+                        <option value="21:00">21:00</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-neutral-500 mb-1 uppercase tracking-wider">ご利用人数</label>
+                    <select id="party-size" required class="w-full border border-neutral-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-amber-600 bg-neutral-50">
+                        <option value="1">1名</option>
+                        <option value="2">2名</option>
+                        <option value="3">3名</option>
+                        <option value="4" selected>4名</option>
+                        <option value="5">5名</option>
+                        <option value="6">6名以上</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-amber-700 hover:bg-amber-800 text-white font-bold py-4 rounded-xl shadow-lg shadow-amber-800/20 transition duration-200 mt-2 cursor-pointer text-center block">
+                    この内容で予約を申請する
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <footer class="text-center py-4 text-xs text-neutral-400 bg-neutral-100 border-t border-neutral-200">
+        &copy; DPRO SHOP Demo System
+    </footer>
+
+    <script>
+        // ★★★ 控えておいた鍵（環境設定）をここに正確に貼り付けます ★★★
+        const LIFF_ID = "2010334558-3WGZGeu2
+"; 
+        const SUPABASE_URL = "https://cbknucemarcpbscirzyv.supabase.co/rest/v1/";
+        const SUPABASE_ANON_KEY = "sb_publishable_cT4vj0FoU1MtjFayuk7HVw_YcuSMR5J
+";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzPMQH8hTX6ky8z-kwp-xZbm7z_08biK4hCZ4AZHpoeiYBZktIUHyh_rX0zFD0p46-JcQ/exec";
+
+        // Supabaseクライアントの初期化
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let userProfile = null;
+
+        // 予約タイプの切り替え演出用JS
+        function toggleType(type) {
+            const labelNormal = document.getElementById('label-normal');
+            const labelTonight = document.getElementById('label-tonight');
+            const dateGroup = document.getElementById('date-group');
+            const dateInput = document.getElementById('reserve-date');
+
+            if (type === 'tonight') {
+                labelTonight.className = "border-2 border-amber-600 rounded-xl p-3 text-center cursor-pointer block bg-amber-50 text-amber-900 font-bold";
+                labelNormal.className = "border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold";
+                dateGroup.style.display = 'none';
+                
+                // 「今夜の空席」なら自動的に今日の「日付」をセット
+                const today = new Date().toISOString().split('T')[0];
+                dateInput.value = today;
+            } else {
+                labelNormal.className = "border-2 border-amber-600 rounded-xl p-3 text-center cursor-pointer block bg-amber-50 text-amber-900 font-bold";
+                labelTonight.className = "border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold";
+                dateGroup.style.display = 'block';
+                dateInput.value = "";
+            }
+        }
+
+        // ページが開いた瞬間にLINEと接続（LIFF初期化）
+        window.addEventListener('DOMContentLoaded', async () => {
+            // 通常予約の日付選択の初期値（明日以降しか選べないようにする設定）
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('reserve-date').min = tomorrow.toISOString().split('T')[0];
+
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (!liff.isLoggedIn()) {
+                    liff.login(); // ログインしていなければ自動でログイン画面へ
+                } else {
+                    // LINEからユーザー情報を取得
+                    userProfile = await liff.getProfile();
+                    document.getElementById('user-name').innerText = `${userProfile.displayName} 様`;
+                    
+                    // 画面の表示切り替え（ローディングを消してフォームを出す）
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('app').classList.remove('hidden');
+                }
+            } catch (error) {
+                alert("LIFFの初期化に失敗しました: " + error);
+            }
+        });
+
+        // フォームが送信されたときの処理
+        document.getElementById('reserve-form').addEventListener('submit', async (e) => {
+            e.preventDefault(); // 画面リロードを防ぐ
+            
+            const reserveType = document.querySelector('input[name="reserve_type"]:checked').value;
+            const reserveDate = document.getElementById('reserve-date').value;
+            const reserveTime = document.getElementById('reserve-time').value;
+            const partySize = parseInt(document.getElementById('party-size').value);
+
+            // 送信するデータの塊を作成
+            const reservationData = {
+                line_user_id: userProfile.userId,
+                line_name: userProfile.displayName,
+                reserve_type: reserveType,
+                reserve_date: reserveDate,
+                reserve_time: reserveTime,
+                party_size: partySize
+            };
+
+            try {
+                // 1. Supabase（データベース）へ保存
+                // ★テーブル名はエラー回避用に作った「izakaya_reservations」を指定しています
+                const { error } = await supabase
+                    .from('izakaya_reservations')
+                    .insert([reservationData]);
+
+                if (error) throw error;
+
+                // 2. Googleカレンダー（GAS）へ送信
+                await fetch(GAS_URL, {
+                    method: 'POST',
+                    method: 'POST',
+                    body: JSON.stringify(reservationData)
+                });
+
+                // 成功したらLINEの画面を自動で閉じる
+                alert('予約の申請が完了しました！カレンダーとデータベースをご確認ください。');
+                liff.closeWindow();
+
+            } catch (err) {
+                alert('エラーが発生しました: ' + err.message);
+            }
+        });
+    </script>
+</body>
+</html>
