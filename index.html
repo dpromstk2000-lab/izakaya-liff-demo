@@ -84,13 +84,13 @@
     </footer>
 
     <script>
-        // 環境設定（鍵情報を完全にクリーンな状態で配置）
+        // 環境設定（鍵情報）
         const LIFF_ID = "2010334558-3WGZGeu2"; 
         const SUPABASE_URL = "https://cbknucemarcpbscirzyv.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_cT4vj0FoU1MtjFayuk7HVw_YcuSMR5J";
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzPMQH8hTX6ky8z-kwp-xZbm7z_08biK4hCZ4AZHpoeiYBZktIUHyh_rX0zFD0p46-JcQ/exec";
 
-        // Supabaseクライアントの初期化（名前の衝突を回避）
+        // Supabaseクライアントの初期化
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let userProfile = null;
 
@@ -157,9 +157,9 @@
             };
 
             try {
-                // 1. Supabaseの既存「reservations」テーブルへ保存
+                // 【修正点】居酒屋専用の「izakaya_reservations」テーブルへ保存するよう指定
                 const { error } = await db
-                    .from('reservations')
+                    .from('izakaya_reservations')
                     .insert([reservationData]);
 
                 if (error) throw error;
