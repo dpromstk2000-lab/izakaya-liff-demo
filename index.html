@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>プレミアム居酒屋 予約システム</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -46,15 +46,14 @@
 
             <div id="app" class="hidden space-y-6">
                 <div class="flex items-center gap-4 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                    <img id="user-img" class="w-12 h-12 rounded-full border-2 border-amber-200" src="" alt="">
+                    <img id="user-img" class="w-12 h-12 rounded-full border-2 border-amber-200" src="https://via.placeholder.com/150" alt="">
                     <div>
                         <p class="text-xs text-stone-400">ようこそ</p>
                         <p id="user-name" class="font-bold text-stone-700">ゲスト 様</p>
                     </div>
                 </div>
 
-                <div id="status-banner" class="hidden p-4 rounded-xl text-sm font-bold text-center border-2">
-                    </div>
+                <div id="status-banner" class="hidden p-4 rounded-xl text-sm font-bold text-center border-2"></div>
 
                 <form id="reserve-form" class="space-y-5">
                     <div class="grid grid-cols-2 gap-3">
@@ -83,16 +82,21 @@
                             <div>
                                 <label class="block text-xs font-bold text-stone-400 mb-1">時間</label>
                                 <select id="reserve-time" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 outline-none">
-                                    <option value="17:00">17:00</option><option value="18:00">18:00</option>
-                                    <option value="19:00">19:00</option><option value="20:00">20:00</option>
+                                    <option value="17:00">17:00</option>
+                                    <option value="18:00">18:00</option>
+                                    <option value="19:00" selected>19:00</option>
+                                    <option value="20:00">20:00</option>
                                     <option value="21:00">21:00</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-stone-400 mb-1">人数</label>
                                 <select id="party-size" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 outline-none">
-                                    <option value="1">1名</option><option value="2" selected>2名</option>
-                                    <option value="3">3名</option><option value="4">4名</option>
+                                    <option value="1">1名</option>
+                                    <option value="2" selected>2名</option>
+                                    <option value="3">3名</option>
+                                    <option value="4">4名</option>
+                                    <option value="5">5名</option>
                                     <option value="6">6名以上</option>
                                 </select>
                             </div>
@@ -104,38 +108,42 @@
                         <div class="grid grid-cols-3 gap-2">
                             <label class="text-center">
                                 <input type="radio" name="seat_type" value="カウンター" checked class="peer hidden">
-                                <div class="py-2 text-xs border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer">カウンター</div>
+                                <div class="py-2 text-xs border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">カウンター</div>
                             </label>
                             <label class="text-center">
                                 <input type="radio" name="seat_type" value="テーブル" class="peer hidden">
-                                <div class="py-2 text-xs border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer">テーブル</div>
+                                <div class="py-2 text-xs border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">テーブル</div>
                             </label>
                             <label class="text-center">
                                 <input type="radio" name="seat_type" value="個室" class="peer hidden">
-                                <div class="py-2 text-xs border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer">完全個室</div>
+                                <div class="py-2 text-xs border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">完全個室</div>
                             </label>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-stone-400 mb-2">こだわり条件</label>
+                        <label class="block text-xs font-bold text-stone-400 mb-2">最初の一杯・お好み（複数選択可）</label>
                         <div class="flex flex-wrap gap-2">
-                            <label class="flex items-center gap-1 bg-stone-100 px-3 py-2 rounded-full text-[10px] font-bold cursor-pointer transition peer-checked:amber-gradient">
-                                <input type="checkbox" name="preferences" value="ビール派" class="hidden peer">
-                                🍺 ビール好き
+                            <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
+                                <input type="checkbox" name="preferences" value="ビール" class="hidden">
+                                🍺 とりあえずビール
                             </label>
-                            <label class="flex items-center gap-1 bg-stone-100 px-3 py-2 rounded-full text-[10px] font-bold cursor-pointer">
-                                <input type="checkbox" name="preferences" value="日本酒派" class="hidden">
-                                🍶 日本酒好き
+                            <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
+                                <input type="checkbox" name="preferences" value="レモンサワー" class="hidden">
+                                🍋 レモンサワー
                             </label>
-                            <label class="flex items-center gap-1 bg-stone-100 px-3 py-2 rounded-full text-[10px] font-bold cursor-pointer">
-                                <input type="checkbox" name="preferences" value="禁煙席" class="hidden">
-                                🚭 禁煙席
+                            <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
+                                <input type="checkbox" name="preferences" value="ハイボール" class="hidden">
+                                🥃 ハイボール
+                            </label>
+                            <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
+                                <input type="checkbox" name="preferences" value="焼酎・日本酒" class="hidden">
+                                🍶 焼酎・日本酒
                             </label>
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full amber-gradient text-white font-bold py-4 rounded-2xl shadow-lg shadow-amber-900/20 active:scale-95 transition-all">
+                    <button type="submit" class="w-full amber-gradient text-white font-bold py-4 rounded-2xl shadow-lg shadow-amber-900/20 active:scale-95 transition-all mt-4">
                         予約内容を送信する
                     </button>
                 </form>
@@ -143,7 +151,7 @@
         </div>
 
         <div id="tab-history-content" class="hidden bg-white p-6 rounded-b-2xl shadow-xl min-h-[400px]">
-            <h3 class="font-bold border-b pb-2 mb-4">現在のご予約状況</h3>
+            <h3 class="font-bold border-b pb-2 mb-4 text-stone-700">現在のご予約状況</h3>
             <div id="reservation-list" class="space-y-4">
                 <p class="text-center text-stone-400 py-12 text-sm">読み込み中...</p>
             </div>
@@ -155,7 +163,7 @@
     </footer>
 
     <script>
-        // 設定
+        // 設定値（変更不要）
         const LIFF_ID = "2010334558-3WGZGeu2"; 
         const SUPABASE_URL = "https://cbknucemarcpbscirzyv.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_cT4vj0FoU1MtjFayuk7HVw_YcuSMR5J";
@@ -164,7 +172,7 @@
         let userProfile = null;
         let fp = null;
 
-        // タブ切り替え
+        // タブ切り替えロジック
         function switchTab(tab) {
             const resTab = document.getElementById('btn-reserve');
             const histTab = document.getElementById('btn-history');
@@ -177,46 +185,58 @@
             } else {
                 resTab.classList.remove('tab-active'); histTab.classList.add('tab-active');
                 resCont.classList.add('hidden'); histCont.classList.remove('hidden');
-                loadHistory();
+                loadHistory(); // 履歴タブを開いたときに読み込む
             }
         }
 
-        // 初期化
+        // 初期化処理
         document.addEventListener('DOMContentLoaded', async () => {
-            // Flatpickr初期化
+            // カレンダー(Flatpickr)の初期化
             fp = flatpickr("#reserve-date", {
                 locale: "ja",
-                minDate: new Date().fp_incr(1),
+                minDate: new Date().fp_incr(1), // 明日以降を指定可能に
                 dateFormat: "Y-m-d",
                 disableMobile: "true"
             });
 
             try {
+                // LIFF初期化
                 await liff.init({ liffId: LIFF_ID });
-                if (!liff.isLoggedIn()) { liff.login(); return; }
+                if (!liff.isLoggedIn()) { 
+                    liff.login(); 
+                    return; 
+                }
                 
+                // ユーザー情報取得
                 userProfile = await liff.getProfile();
-                document.getElementById('user-img').src = userProfile.pictureUrl;
+                document.getElementById('user-img').src = userProfile.pictureUrl || 'https://via.placeholder.com/150';
                 document.getElementById('user-name').innerText = `${userProfile.displayName} 様`;
                 
-                // リアルタイム同期
+                // 店舗のリアルタイム状況を取得
                 listenShopStatus();
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('app').classList.remove('hidden');
-            } catch (err) { console.error(err); }
+            } catch (err) { 
+                console.error('LIFF初期化エラー:', err);
+                // PCブラウザでのテスト用に画面は表示させる（本番では消してもOK）
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app').classList.remove('hidden');
+            }
         });
 
-        // リアルタイム店舗状況
+        // 店舗のステータス（空席あり、満席など）を取得・監視
         async function listenShopStatus() {
             const { data } = await db.from('shop_status').select('status').single();
             if (data) applyUI(data.status);
 
+            // リアルタイム更新（オーナーが変更した瞬間にお客様画面も変わる）
             db.channel('status').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shop_status' }, 
                 payload => applyUI(payload.new.status)
             ).subscribe();
         }
 
+        // 店舗状況に合わせてUIを変更
         function applyUI(status) {
             const banner = document.getElementById('status-banner');
             const inputT = document.getElementById('input-tonight');
@@ -239,6 +259,7 @@
             }
         }
 
+        // 予約タイプの切り替え（今夜の空席を選ぶと日付が今日で固定される）
         function toggleType(type) {
             if (type === 'tonight') {
                 fp.setDate(new Date());
@@ -249,37 +270,50 @@
             }
         }
 
-        // 予約履歴取得
+        // 予約履歴を取得して表示
         async function loadHistory() {
             const listEl = document.getElementById('reservation-list');
             listEl.innerHTML = '<p class="text-center text-stone-400 py-12 text-sm animate-pulse">照会中...</p>';
 
-            const { data, error } = await db.from('izakaya_reservations')
-                .select('*').eq('line_user_id', userProfile.userId).order('created_at', { ascending: false });
+            const userId = userProfile ? userProfile.userId : "guest";
 
-            if (error || !data.length) {
+            const { data, error } = await db.from('izakaya_reservations')
+                .select('*')
+                .eq('line_user_id', userId)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                listEl.innerHTML = `<p class="text-center text-red-500 py-12 text-sm">エラー: ${error.message}</p>`;
+                return;
+            }
+
+            if (!data.length) {
                 listEl.innerHTML = '<p class="text-center text-stone-400 py-12 text-sm">予約履歴はありません</p>';
                 return;
             }
 
+            // 履歴リストのHTML生成
             listEl.innerHTML = data.map(res => `
-                <div class="border rounded-xl p-4 bg-stone-50 border-stone-100 relative">
-                    <span class="absolute top-4 right-4 text-[10px] px-2 py-1 rounded bg-amber-600 text-white font-bold">${res.status}</span>
+                <div class="border rounded-xl p-4 bg-stone-50 border-stone-100 relative shadow-sm">
+                    <span class="absolute top-4 right-4 text-[10px] px-2 py-1 rounded ${res.status === '確定' ? 'bg-emerald-600' : res.status === 'キャンセル' ? 'bg-stone-400' : 'bg-amber-600'} text-white font-bold">${res.status}</span>
                     <p class="text-[10px] text-stone-400 mb-1">${res.reserve_type}</p>
                     <p class="font-bold text-stone-700">${res.reserve_date} <span class="text-amber-600">${res.reserve_time}〜</span></p>
-                    <p class="text-xs text-stone-500 mt-1">${res.party_size}名様 / ${res.seat_type || '指定なし'}</p>
+                    <p class="text-xs text-stone-500 mt-1">👤 ${res.party_size}名様 / 🪑 ${res.seat_type || '指定なし'}</p>
                 </div>
             `).join('');
         }
 
-        // 送信
+        // 予約フォームの送信処理
         document.getElementById('reserve-form').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            // 選択された「こだわり条件」を配列にする
             const prefs = Array.from(document.querySelectorAll('input[name="preferences"]:checked')).map(el => el.value);
             
+            // Supabaseに送るデータ
             const formData = {
-                line_user_id: userProfile.userId,
-                line_name: userProfile.displayName,
+                line_user_id: userProfile ? userProfile.userId : "guest_test", // LIFF環境外でのテスト対策
+                line_name: userProfile ? userProfile.displayName : "テスト ユーザー",
                 reserve_type: document.querySelector('input[name="reserve_type"]:checked').value,
                 reserve_date: document.getElementById('reserve-date').value,
                 reserve_time: document.getElementById('reserve-time').value,
@@ -290,23 +324,28 @@
             };
 
             try {
+                // Supabaseへデータを挿入
                 const { error } = await db.from('izakaya_reservations').insert([formData]);
-                if (error) throw error;
+                if (error) throw new Error("データベース保存エラー: " + error.message);
 
-                if (liff.isInClient()) {
+                // LINEのトークルームにメッセージを送信（LINEアプリ内のみ動作）
+                if (typeof liff !== 'undefined' && liff.isInClient()) {
                     await liff.sendMessages([{
                         type: 'text',
-                        text: `🏮 予約申請完了\n\nお名前：${userProfile.displayName}様\n日時：${formData.reserve_date} ${formData.reserve_time}\n人数：${formData.party_size}名\n席種：${formData.seat_type}\n\n店舗からの確定連絡をお待ちください。`
+                        text: `🏮 予約申請完了\n\n日時：${formData.reserve_date} ${formData.reserve_time}\n人数：${formData.party_size}名\n席種：${formData.seat_type}\n\n店舗からの確定連絡をお待ちください。`
                     }]);
+                    alert('予約申請を承りました。確定までお待ちください。');
+                    liff.closeWindow(); // 画面を閉じる
+                } else {
+                    alert('予約申請を承りました。\n※PCブラウザ等のため、LINEメッセージ送信はスキップしました。');
+                    window.location.reload(); // PCテスト時は画面をリロード
                 }
-                alert('予約申請を承りました。確定までお待ちください。');
-                liff.closeWindow();
-            } catch (err) { alert('エラー: ' + err.message); }
+
+            } catch (err) { 
+                console.error("送信エラー:", err);
+                alert('エラーが発生しました。\n' + err.message); 
+            }
         });
     </script>
 </body>
 </html>
-
-「琥珀亭（こはくてい）」という架空の高級居酒屋をイメージした、プレミアムなブラッシュアップ案です。ご自身の店舗名や雰囲気に合わせて調整してみてください。
-
-あなたの居酒屋予約システムを「最大限に活用」したアップデート案が完成しました！いかがでしょうか。修正したい箇所や、更なる機能追加のご要望があればお知らせください。
