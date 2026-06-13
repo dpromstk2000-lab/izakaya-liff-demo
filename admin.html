@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>オーナー用ダッシュボード</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; text-align: center; }
+        .btn { padding: 20px 40px; font-size: 20px; margin: 10px; cursor: pointer; }
+        .open { background-color: #4CAF50; color: white; }
+        .closed { background-color: #f44336; color: white; }
+    </style>
+</head>
+<body>
+    <h1>店舗管理ダッシュボード</h1>
+    <p>現在の状態: <span id="status-text">読み込み中...</span></p>
+    
+    <button class="btn open" onclick="updateStatus('空席あり')">空席ありにする</button>
+    <button class="btn closed" onclick="updateStatus('満席')">満席にする</button>
+
+    <script>
+        // ★ここにSupabaseのURLと公開キーを入れてください
+        const supabase = supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
+
+        async function updateStatus(newStatus) {
+            const { error } = await supabase
+                .from('shop_status')
+                .update({ status: newStatus })
+                .eq('id', 1);
+            
+            if (error) alert('エラーが発生しました');
+            else {
+                alert('更新しました！');
+                document.getElementById('status-text').innerText = newStatus;
+            }
+        }
+    </script>
+</body>
+</html>
