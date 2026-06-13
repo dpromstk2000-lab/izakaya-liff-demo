@@ -33,20 +33,41 @@
                 <div>
                     <label class="block text-xs font-bold text-neutral-500 mb-2 uppercase tracking-wider">予約の種類</label>
                     <div class="grid grid-cols-2 gap-3">
-                        <label class="border-2 border-amber-600 rounded-xl p-3 text-center cursor-pointer block bg-amber-50 text-amber-900 font-bold" id="label-normal">
+                        <label class="border-2 border-amber-600 rounded-xl p-3 text-center cursor-pointer block bg-amber-50 text-amber-900 font-bold transition-all" id="label-normal">
                             <input type="radio" name="reserve_type" value="通常予約" checked class="hidden" onchange="toggleType('normal')">
                             📅 通常予約
                         </label>
-                        <label class="border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold" id="label-tonight">
-                            <input type="radio" name="reserve_type" value="今夜の空席" class="hidden" onchange="toggleType('tonight')">
-                            ⚡ 今夜の空席
+                        <label class="border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold transition-all" id="label-tonight">
+                            <input type="radio" name="reserve_type" value="今夜の空席" id="input-tonight" class="hidden" onchange="toggleType('tonight')">
+                            <span id="text-tonight">⚡ 今夜の空席</span>
                         </label>
                     </div>
+                    <p id="tonight-notice" class="hidden text-xs text-red-600 font-bold mt-2 bg-red-50 p-2 rounded-lg border border-red-100">
+                        ⚠️ 今夜は満席のためリアルタイム予約を停止しています。空き次第通知を希望される場合は、店舗スタッフまで公式LINEトークにてご連絡ください。
+                    </p>
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-neutral-500 mb-1 uppercase tracking-wider">ご予約者名（ひらがな・漢字）</label>
                     <input type="text" id="customer-name" required placeholder="例：いわぐち だいじろう" class="w-full border border-neutral-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-amber-600 bg-neutral-50">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-neutral-500 mb-2 uppercase tracking-wider">お好み・ご希望（複数選択可）</label>
+                    <div class="flex flex-wrap gap-2">
+                        <label class="inline-flex items-center gap-1.5 bg-neutral-50 hover:bg-amber-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-medium cursor-pointer transition select-none">
+                            <input type="checkbox" name="preferences" value="ビール派" class="w-4 h-4 rounded border-neutral-300 text-amber-700 focus:ring-amber-600">
+                            🍺 ビール派
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 bg-neutral-50 hover:bg-amber-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-medium cursor-pointer transition select-none">
+                            <input type="checkbox" name="preferences" value="レモンサワー派" class="w-4 h-4 rounded border-neutral-300 text-amber-700 focus:ring-amber-600">
+                            🍋 サワー派
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 bg-neutral-50 hover:bg-amber-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-medium cursor-pointer transition select-none">
+                            <input type="checkbox" name="preferences" value="禁煙席希望" class="w-4 h-4 rounded border-neutral-300 text-amber-700 focus:ring-amber-600">
+                            🚭 禁煙席希望
+                        </label>
+                    </div>
                 </div>
 
                 <div id="date-group">
@@ -93,7 +114,6 @@
         const LIFF_ID = "2010334558-3WGZGeu2"; 
         const SUPABASE_URL = "https://cbknucemarcpbscirzyv.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_cT4vj0FoU1MtjFayuk7HVw_YcuSMR5J";
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzPMQH8hTX6ky8z-kwp-xZbm7z_08biK4hCZ4AZHpoeiYBZktIUHyh_rX0zFD0p46-JcQ/exec";
 
         // Supabaseクライアントの初期化
         const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -105,24 +125,93 @@
             const labelTonight = document.getElementById('label-tonight');
             const dateGroup = document.getElementById('date-group');
             const dateInput = document.getElementById('reserve-date');
+            const inputTonight = document.getElementById('input-tonight');
+
+            // 満席時は「今夜の空席」への切り替えをブロック
+            if (type === 'tonight' && inputTonight.disabled) return;
 
             if (type === 'tonight') {
-                labelTonight.className = "border-2 border-amber-600 rounded-xl p-3 text-center cursor-pointer block bg-amber-50 text-amber-900 font-bold";
-                labelNormal.className = "border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold";
+                labelTonight.className = "border-2 border-amber-600 rounded-xl p-3 text-center cursor-pointer block bg-amber-50 text-amber-900 font-bold transition-all";
+                labelNormal.className = "border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold transition-all";
                 dateGroup.style.display = 'none';
                 
                 const today = new Date().toISOString().split('T')[0];
                 dateInput.value = today;
             } else {
-                labelNormal.className = "border-2 border-amber-600 rounded-xl p-3 text-center cursor-pointer block bg-amber-50 text-amber-900 font-bold";
-                labelTonight.className = "border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold";
+                labelNormal.className = "border-2 border-amber-600 rounded-xl p-3 text-center cursor-pointer block bg-amber-50 text-amber-900 font-bold transition-all";
+                labelTonight.className = "border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold transition-all";
                 dateGroup.style.display = 'block';
                 dateInput.value = "";
             }
         }
 
+        // 💡【機能①のコア】Supabase Realtime と連携した空席状況反映ロジック
+        async function listenShopStatus() {
+            // 1. 初回読み込み時の状態取得
+            const { data, error } = await db
+                .from('shop_status')
+                .select('status')
+                .single(); // 単一店舗レコードを想定
+
+            if (!error && data) {
+                applyShopStatusUI(data.status);
+            }
+
+            // 2. Realtime で店舗側の変更をリアルタイム検知
+            db.channel('schema-db-changes')
+                .on(
+                    'postgres_changes',
+                    { event: 'UPDATE', schema: 'public', table: 'shop_status' },
+                    (payload) => {
+                        if (payload.new && payload.new.status) {
+                            applyShopStatusUI(payload.new.status);
+                        }
+                    }
+                )
+                .subscribe();
+        }
+
+        // 空席状態に応じたUI制御
+        function applyShopStatusUI(status) {
+            const labelTonight = document.getElementById('label-tonight');
+            const inputTonight = document.getElementById('input-tonight');
+            const textTonight = document.getElementById('text-tonight');
+            const tonightNotice = document.getElementById('tonight-notice');
+
+            if (status === '満席') {
+                inputTonight.disabled = true;
+                tonightNotice.classList.remove('hidden');
+                
+                // もし現在「今夜の空席」が選ばれていたら通常予約に強制避難
+                if (inputTonight.checked) {
+                    document.querySelector('input[name="reserve_type"][value="通常予約"]').checked = true;
+                    toggleType('normal');
+                }
+
+                // グレーアウト表現の適用
+                labelTonight.className = "border-2 border-neutral-200 bg-neutral-100 rounded-xl p-3 text-center block text-neutral-400 font-bold opacity-50 cursor-not-allowed transition-all";
+                textTonight.innerText = "❌ 今夜は満席";
+            } else {
+                inputTonight.disabled = false;
+                tonightNotice.classList.add('hidden');
+                
+                // 状態に応じたテキスト装飾
+                const suffix = status === '残りわずか' ? ' (残りわずか!🔺)' : '';
+                textTonight.innerText = `⚡ 今夜の空席${suffix}`;
+
+                // ラジオボタンの選択状態に合わせて現在のスタイルを再計算
+                const currentType = document.querySelector('input[name="reserve_type"]:checked').value;
+                if (currentType === '今夜の空席') {
+                    labelTonight.className = "border-2 border-amber-600 rounded-xl p-3 text-center cursor-pointer block bg-amber-50 text-amber-900 font-bold transition-all";
+                } else {
+                    labelTonight.className = "border-2 border-neutral-200 rounded-xl p-3 text-center cursor-pointer block text-neutral-500 font-bold transition-all";
+                }
+            }
+        }
+
         // ページ読み込み時のLIFF初期化
         window.addEventListener('DOMContentLoaded', async () => {
+            // 通常予約は明日以降のみ選択可能にする制御
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             document.getElementById('reserve-date').min = tomorrow.toISOString().split('T')[0];
@@ -134,15 +223,16 @@
                 } else {
                     userProfile = await liff.getProfile();
                     document.getElementById('user-name').innerText = `${userProfile.displayName} 様`;
-                    
-                    // 【お名前の初期値設定】入力欄の初期値として、一応LINEの表示名を自動で入れてあげる（親切設計）
                     document.getElementById('customer-name').value = userProfile.displayName;
+                    
+                    // リアルタイム空席同期の監視開始
+                    await listenShopStatus();
                     
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('app').classList.remove('hidden');
                 }
             } catch (error) {
-                alert("LIFFの初期化に失敗しました: " + error);
+                alert("システムの初期化に失敗しました: " + error);
             }
         });
 
@@ -151,35 +241,36 @@
             e.preventDefault();
             
             const reserveType = document.querySelector('input[name="reserve_type"]:checked').value;
-            const customerName = document.getElementById('customer-name').value; // 入力されたお名前を取得
+            const customerName = document.getElementById('customer-name').value;
             const reserveDate = document.getElementById('reserve-date').value;
             const reserveTime = document.getElementById('reserve-time').value;
             const partySize = parseInt(document.getElementById('party-size').value);
 
+            // 💡【機能②のコア】チェックされた顧客属性（お好み）を配列で抽出
+            const checkedPrefs = Array.from(document.querySelectorAll('input[name="preferences"]:checked'))
+                                      .map(el => el.value);
+
+            // 保存データ構造
             const reservationData = {
                 line_user_id: userProfile.userId,
-                line_name: customerName, // 【変更点】アカウント名ではなく、入力されたお名前をDBとGASに送る
+                line_name: customerName,
                 reserve_type: reserveType,
                 reserve_date: reserveDate,
                 reserve_time: reserveTime,
-                party_size: partySize
+                party_size: partySize,
+                preferences: checkedPrefs,   // 💡 jsonb型カラムへシリアライズして格納
+                status: "仮予約"             // 💡【機能③】初期ステータスを承認制（仮予約）に設定
             };
 
             try {
-                // 1. 居酒屋専用の「izakaya_reservations」テーブルへ保存
+                // 1. Supabaseの「izakaya_reservations」テーブルへデータ保存
                 const { error } = await db
                     .from('izakaya_reservations')
                     .insert([reservationData]);
 
                 if (error) throw error;
 
-                // 2. Googleカレンダー（GAS）へ送信
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(reservationData)
-                });
-
-                // コスト完全無料でトーク画面に自動控えを投稿する処理
+                // 2. LINEトーク画面へ自動控えを投稿（Messaging APIの無料枠を消費しない仕組み）
                 if (liff.isInClient()) {
                     await liff.sendMessages([
                         {
@@ -189,7 +280,7 @@
                     ]);
                 }
 
-                alert('予約の申請が完了しました！カレンダーとトーク画面の控えをご確認ください。');
+                alert('予約の申請が完了しました！店舗からの確定通知をお待ちください。');
                 liff.closeWindow();
 
             } catch (err) {
