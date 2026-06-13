@@ -20,7 +20,7 @@
 
     <script>
         // ★ここにSupabaseのURLと公開キーを入れてください
-        const supabase = supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_ANON_KEY');
+        const supabase = supabase.createClient('https://cbknucemarcpbscirzyv.supabase.co/rest/v1/', 'sb_publishable_cT4vj0FoU1MtjFayuk7HVw_YcuSMR5J');
 
         async function updateStatus(newStatus) {
             const { error } = await supabase
