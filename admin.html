@@ -2,36 +2,278 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>オーナー用ダッシュボード</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>琥珀亭 オーナーダッシュボード</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; text-align: center; }
-        .btn { padding: 20px 40px; font-size: 20px; margin: 10px; cursor: pointer; }
-        .open { background-color: #4CAF50; color: white; }
-        .closed { background-color: #f44336; color: white; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        /* スクロールバー非表示（モバイル向け） */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body>
-    <h1>店舗管理ダッシュボード</h1>
-    <p>現在の状態: <span id="status-text">読み込み中...</span></p>
-    
-    <button class="btn open" onclick="updateStatus('空席あり')">空席ありにする</button>
-    <button class="btn closed" onclick="updateStatus('満席')">満席にする</button>
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-20">
+
+    <header class="bg-slate-900 text-white p-4 shadow-md sticky top-0 z-50">
+        <div class="max-w-3xl mx-auto flex justify-between items-center">
+            <h1 class="text-lg font-bold tracking-widest">🏮 琥珀亭 管理システム</h1>
+            <div class="text-xs text-slate-400">現在: <span id="current-shop-status" class="font-bold text-white">取得中...</span></div>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto p-4 space-y-6 mt-4">
+        
+        <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="text-sm font-bold text-slate-500 mb-3 uppercase tracking-wider">店舗ステータスの変更（顧客画面に即反映）</h2>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="updateShopStatus('空席あり')" id="btn-status-open" class="py-3 rounded-xl font-bold text-sm border-2 border-emerald-500 text-emerald-600 bg-emerald-50 transition active:scale-95">
+                    ⭕ 空席あり
+                </button>
+                <button onclick="updateShopStatus('残りわずか')" id="btn-status-few" class="py-3 rounded-xl font-bold text-sm border-2 border-amber-500 text-amber-600 bg-amber-50 transition active:scale-95">
+                    🔺 残りわずか
+                </button>
+                <button onclick="updateShopStatus('満席')" id="btn-status-full" class="py-3 rounded-xl font-bold text-sm border-2 border-red-500 text-red-600 bg-red-50 transition active:scale-95">
+                    ❌ 満席
+                </button>
+            </div>
+        </section>
+
+        <section class="bg-slate-900 text-white rounded-2xl shadow-lg overflow-hidden">
+            <div class="flex justify-between items-center p-2">
+                <button onclick="changeDate(-1)" class="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition active:scale-95">
+                    <span class="text-xl">◀</span> 
+                </button>
+                <div class="text-center">
+                    <div id="display-date" class="text-xl font-bold tracking-wider">2026/06/13 (土)</div>
+                    <div class="text-xs text-slate-400 mt-1">
+                        予約: <span id="daily-count" class="text-amber-400 font-bold text-base">0</span> 件 
+                        / 人数: <span id="daily-guests" class="text-amber-400 font-bold text-base">0</span> 名
+                    </div>
+                </div>
+                <button onclick="changeDate(1)" class="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition active:scale-95">
+                    <span class="text-xl">▶</span>
+                </button>
+            </div>
+            <div class="bg-slate-800 text-center text-xs py-2 cursor-pointer hover:bg-slate-700 transition text-slate-300" onclick="resetToToday()">
+                📅 今日の予約に戻る
+            </div>
+        </section>
+
+        <section>
+            <div class="flex justify-between items-end mb-3 px-1">
+                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">タイムライン</h2>
+                <button onclick="fetchReservations()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                    🔄 最新に更新
+                </button>
+            </div>
+            
+            <div id="reservation-list" class="space-y-3">
+                <p class="text-center text-slate-400 py-8 text-sm animate-pulse">読み込み中...</p>
+            </div>
+        </section>
+    </main>
 
     <script>
-        // ★ここにSupabaseのURLと公開キーを入れてください
-        const supabase = supabase.createClient('https://cbknucemarcpbscirzyv.supabase.co', 'sb_publishable_cT4vj0FoU1MtjFayuk7HVw_YcuSMR5J');
+        // --- Supabase 初期設定 ---
+        const SUPABASE_URL = "https://cbknucemarcpbscirzyv.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_cT4vj0FoU1MtjFayuk7HVw_YcuSMR5J";
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        async function updateStatus(newStatus) {
-            const { error } = await supabase
-                .from('shop_status')
-                .update({ status: newStatus })
-                .eq('id', 1);
+        // --- 状態管理 ---
+        let targetDate = new Date(); // 表示中の日付
+
+        // 初期化処理
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchShopStatus();
+            updateDateDisplay();
+        });
+
+        // ==========================================
+        // 店舗ステータス管理機能
+        // ==========================================
+        async function fetchShopStatus() {
+            const { data, error } = await db.from('shop_status').select('status').single();
+            if (data) {
+                document.getElementById('current-shop-status').innerText = data.status;
+                highlightStatusButton(data.status);
+            }
+        }
+
+        async function updateShopStatus(newStatus) {
+            // 確認ダイアログ
+            if (!confirm(`店舗を「${newStatus}」に変更しますか？顧客画面に即座に反映されます。`)) return;
+
+            const { error } = await db.from('shop_status').update({ status: newStatus }).eq('id', 1);
+            if (error) {
+                alert('エラーが発生しました: ' + error.message);
+            } else {
+                document.getElementById('current-shop-status').innerText = newStatus;
+                highlightStatusButton(newStatus);
+                // 成功時は小さくトースト通知などを出すとより良いですが、ここでは省略
+            }
+        }
+
+        function highlightStatusButton(status) {
+            // 一旦すべてのボタンのスタイルを薄くする
+            ['open', 'few', 'full'].forEach(id => {
+                document.getElementById(`btn-status-${id}`).classList.replace('text-white', 'bg-opacity-10');
+            });
+
+            // 選択されたものを濃くする
+            if (status === '空席あり') document.getElementById('btn-status-open').classList.add('bg-emerald-500', 'text-white');
+            if (status === '残りわずか') document.getElementById('btn-status-few').classList.add('bg-amber-500', 'text-white');
+            if (status === '満席') document.getElementById('btn-status-full').classList.add('bg-red-500', 'text-white');
+        }
+
+        // ==========================================
+        // 日付ナビゲーション機能
+        // ==========================================
+        function changeDate(offset) {
+            targetDate.setDate(targetDate.getDate() + offset);
+            updateDateDisplay();
+        }
+
+        function resetToToday() {
+            targetDate = new Date();
+            updateDateDisplay();
+        }
+
+        function updateDateDisplay() {
+            const yyyy = targetDate.getFullYear();
+            const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(targetDate.getDate()).padStart(2, '0');
+            const days = ['日', '月', '火', '水', '木', '金', '土'];
+            const dayStr = days[targetDate.getDay()];
             
-            if (error) alert('エラーが発生しました');
-            else {
-                alert('更新しました！');
-                document.getElementById('status-text').innerText = newStatus;
+            document.getElementById('display-date').innerText = `${yyyy}/${mm}/${dd} (${dayStr})`;
+            
+            fetchReservations(`${yyyy}-${mm}-${dd}`);
+        }
+
+        // ==========================================
+        // 予約データ取得・表示機能
+        // ==========================================
+        async function fetchReservations(dateString) {
+            const listEl = document.getElementById('reservation-list');
+            listEl.innerHTML = '<p class="text-center text-slate-400 py-8 text-sm animate-pulse">読み込み中...</p>';
+
+            const { data, error } = await db
+                .from('izakaya_reservations')
+                .select('*')
+                .eq('reserve_date', dateString)
+                .order('reserve_time', { ascending: true }); // 時間順に並べる
+
+            if (error) {
+                listEl.innerHTML = `<p class="text-center text-red-500 py-8">取得エラー: ${error.message}</p>`;
+                return;
+            }
+
+            renderReservations(data);
+        }
+
+        function renderReservations(reservations) {
+            const listEl = document.getElementById('reservation-list');
+            const countEl = document.getElementById('daily-count');
+            const guestsEl = document.getElementById('daily-guests');
+
+            if (reservations.length === 0) {
+                listEl.innerHTML = `
+                    <div class="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400 shadow-sm">
+                        <div class="text-4xl mb-2">🍃</div>
+                        <p>この日の予約はありません</p>
+                    </div>`;
+                countEl.innerText = 0;
+                guestsEl.innerText = 0;
+                return;
+            }
+
+            // 統計情報の更新
+            countEl.innerText = reservations.length;
+            guestsEl.innerText = reservations.reduce((sum, res) => sum + res.party_size, 0);
+
+            // リストの描画
+            listEl.innerHTML = reservations.map(res => {
+                // ステータスに応じた色分け
+                let statusColor = "bg-slate-200 text-slate-600";
+                if (res.status === '仮予約') statusColor = "bg-amber-100 text-amber-700 border border-amber-300";
+                if (res.status === '確定') statusColor = "bg-emerald-100 text-emerald-700 border border-emerald-300";
+                if (res.status === 'キャンセル') statusColor = "bg-slate-100 text-slate-400 strike-through";
+
+                // こだわり条件のタグ化（JSON/配列前提）
+                let prefsHtml = '';
+                if (res.preferences && res.preferences.length > 0) {
+                    prefsHtml = res.preferences.map(p => `<span class="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full">${p}</span>`).join(' ');
+                }
+
+                // アクションボタン（仮予約なら「承認/拒否」、確定なら「キャンセル処理」など）
+                let actionButtons = '';
+                if (res.status === '仮予約') {
+                    actionButtons = `
+                        <button onclick="changeReservationStatus(${res.id}, '確定')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs shadow-sm transition">
+                            ✅ 予約を確定する
+                        </button>
+                        <button onclick="changeReservationStatus(${res.id}, 'キャンセル')" class="px-4 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-2 rounded-lg text-xs transition">
+                            ❌ お断り
+                        </button>
+                    `;
+                } else if (res.status === '確定') {
+                    actionButtons = `
+                        <button onclick="changeReservationStatus(${res.id}, 'キャンセル')" class="w-full bg-red-50 text-red-600 border border-red-200 font-bold py-2 rounded-lg text-xs hover:bg-red-100 transition">
+                            顧客キャンセルとして処理
+                        </button>
+                    `;
+                }
+
+                return `
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 relative overflow-hidden ${res.status === 'キャンセル' ? 'opacity-50' : ''}">
+                    <div class="absolute top-4 right-4 text-[10px] px-2 py-1 rounded font-bold ${statusColor}">
+                        ${res.status}
+                    </div>
+
+                    <div class="flex items-start gap-4 mb-3">
+                        <div class="bg-amber-50 text-amber-800 rounded-xl p-2 text-center min-w-[60px] border border-amber-100">
+                            <div class="text-xs font-bold">START</div>
+                            <div class="text-lg font-black tracking-tighter">${res.reserve_time}</div>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">${res.line_name} 様</h3>
+                            <p class="text-xs text-slate-500 mt-1">
+                                👤 ${res.party_size}名 / 🪑 ${res.seat_type || '指定なし'} / ${res.reserve_type}
+                            </p>
+                            <div class="mt-2 flex flex-wrap gap-1">
+                                ${prefsHtml}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                        ${actionButtons}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // ==========================================
+        // 個別予約のステータス変更機能
+        // ==========================================
+        async function changeReservationStatus(id, newStatus) {
+            if (!confirm(`この予約を「${newStatus}」に変更しますか？`)) return;
+
+            const { error } = await db
+                .from('izakaya_reservations')
+                .update({ status: newStatus })
+                .eq('id', id);
+
+            if (error) {
+                alert('エラーが発生しました: ' + error.message);
+            } else {
+                // 更新完了後、現在の表示日付でリストを再取得
+                const yyyy = targetDate.getFullYear();
+                const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(targetDate.getDate()).padStart(2, '0');
+                fetchReservations(`${yyyy}-${mm}-${dd}`);
             }
         }
     </script>
