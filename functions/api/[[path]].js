@@ -12,6 +12,9 @@ export async function onRequest(context) {
   }
 
   try {
+    // =========================
+    // Health Check
+    // =========================
     if (url.pathname === "/api/health" && request.method === "GET") {
       return jsonResponse({
         ok: true,
@@ -22,6 +25,9 @@ export async function onRequest(context) {
       }, env);
     }
 
+    // =========================
+    // Public APIs
+    // =========================
     if (url.pathname === "/api/public/status" && request.method === "GET") {
       return await getPublicStatus(env);
     }
@@ -30,12 +36,30 @@ export async function onRequest(context) {
       return await getPublicSettings(env);
     }
 
+    // =========================
+    // Customer Reservation APIs
+    // =========================
     if (url.pathname === "/api/reservations/create" && request.method === "POST") {
       return await createReservation(request, env);
     }
 
     if (url.pathname === "/api/reservations/my" && request.method === "GET") {
       return await getMyReservations(request, env);
+    }
+
+    // =========================
+    // Admin APIs
+    // =========================
+    if (url.pathname === "/api/admin/day" && request.method === "GET") {
+      return await getAdminDay(request, env, url);
+    }
+
+    if (url.pathname === "/api/admin/reservations/status" && request.method === "POST") {
+      return await updateReservationStatus(request, env);
+    }
+
+    if (url.pathname === "/api/admin/shop-status" && request.method === "POST") {
+      return await updateShopStatus(request, env);
     }
 
     return jsonResponse({
@@ -45,12 +69,18 @@ export async function onRequest(context) {
     }, env, 404);
 
   } catch (err) {
+    console.error("API Error:", err);
+
     return jsonResponse({
       ok: false,
       error: err.message || "Internal error",
     }, env, 500);
   }
 }
+
+// =========================================================
+// Common Helpers
+// =========================================================
 
 function corsHeaders(env) {
   return {
@@ -87,6 +117,15 @@ function requireEnv(env, key) {
   }
 
   return value;
+}
+
+function requireAdmin(request, env) {
+  const token = request.headers.get("X-Admin-Token");
+  const expected = requireEnv(env, "ADMIN_TOKEN");
+
+  if (!token || token !== expected) {
+    throw new Error("管理者認証に失敗しました");
+  }
 }
 
 async function supabaseFetch(env, path, options = {}) {
@@ -161,6 +200,10 @@ async function verifyLineIdToken(env, idToken) {
   };
 }
 
+// =========================================================
+// Public APIs
+// =========================================================
+
 async function getPublicStatus(env) {
   const data = await supabaseFetch(
     env,
@@ -192,10 +235,14 @@ async function getPublicSettings(env) {
   return jsonResponse({
     ok: true,
     shop: shop?.[0] || null,
-    businessHours,
-    specialDays,
+    businessHours: businessHours || [],
+    specialDays: specialDays || [],
   }, env);
 }
+
+// =========================================================
+// Customer Reservation APIs
+// =========================================================
 
 async function createReservation(request, env) {
   const body = await readJson(request);
@@ -224,7 +271,7 @@ async function createReservation(request, env) {
   return jsonResponse({
     ok: true,
     profile,
-    result: result?.[0] || result,
+    result: Array.isArray(result) ? result[0] : result,
   }, env);
 }
 
@@ -234,14 +281,144 @@ async function getMyReservations(request, env) {
 
   const profile = await verifyLineIdToken(env, idToken);
 
+  const lineUserId = encodeURIComponent(profile.lineUserId);
+
   const data = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&line_user_id=eq.${encodeURIComponent(profile.lineUserId)}&select=id,reserve_date,reserve_time,party_size,seat_type,preferences,status,customer_note,created_at,updated_at&order=reserve_date.asc&order=reserve_time.asc`
+    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&line_user_id=eq.${lineUserId}&status=in.(pending,confirmed)&select=id,reserve_date,reserve_time,party_size,seat_type,preferences,status,customer_note,created_at,updated_at&order=reserve_date.asc&order=reserve_time.asc`
   );
 
   return jsonResponse({
     ok: true,
     profile,
-    reservations: data,
+    reservations: data || [],
+  }, env);
+}
+
+// =========================================================
+// Admin APIs
+// =========================================================
+
+async function getAdminDay(request, env, url) {
+  requireAdmin(request, env);
+
+  const date = url.searchParams.get("date");
+
+  if (!date) {
+    throw new Error("date が必要です");
+  }
+
+  const encodedDate = encodeURIComponent(date);
+
+  const reservations = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&reserve_date=eq.${encodedDate}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,seat_type,preferences,status,source,customer_note,admin_note,cancel_reason,created_at,updated_at,customer:iz_demo_customers(status,memo,visit_count,no_show_count)&order=reserve_time.asc&order=created_at.asc`
+  );
+
+  const activeReservations = (reservations || []).filter((reservation) => {
+    return ["pending", "confirmed"].includes(reservation.status);
+  });
+
+  const summary = {
+    count: activeReservations.length,
+    guests: activeReservations.reduce((sum, reservation) => {
+      return sum + Number(reservation.party_size || 0);
+    }, 0),
+    pending: activeReservations.filter((reservation) => reservation.status === "pending").length,
+    confirmed: activeReservations.filter((reservation) => reservation.status === "confirmed").length,
+  };
+
+  return jsonResponse({
+    ok: true,
+    date,
+    summary,
+    reservations: reservations || [],
+  }, env);
+}
+
+async function updateReservationStatus(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+
+  if (!body.reservationId) {
+    throw new Error("reservationId が必要です");
+  }
+
+  if (!body.status) {
+    throw new Error("status が必要です");
+  }
+
+  const allowedStatuses = [
+    "pending",
+    "confirmed",
+    "cancelled_customer",
+    "cancelled_shop",
+    "completed",
+    "no_show",
+  ];
+
+  if (!allowedStatuses.includes(body.status)) {
+    throw new Error("不正な予約ステータスです");
+  }
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_update_reservation_status",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_reservation_id: body.reservationId,
+        p_new_status: body.status,
+        p_actor_id: body.actorId || "admin",
+        p_reason: body.reason || null,
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    result: Array.isArray(result) ? result[0] : result,
+  }, env);
+}
+
+async function updateShopStatus(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+
+  if (!body.status) {
+    throw new Error("status が必要です");
+  }
+
+  const allowedStatuses = [
+    "open",
+    "few",
+    "full",
+    "closed",
+  ];
+
+  if (!allowedStatuses.includes(body.status)) {
+    throw new Error("不正な店舗ステータスです");
+  }
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_update_shop_status",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_status: body.status,
+        p_message: body.message || null,
+        p_actor_id: body.actorId || "admin",
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    result: Array.isArray(result) ? result[0] : result,
   }, env);
 }
