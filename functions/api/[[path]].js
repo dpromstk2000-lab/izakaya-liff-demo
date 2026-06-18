@@ -74,6 +74,10 @@ export async function onRequest(context) {
       return await updateCustomerAdmin(request, env);
     }
 
+    if (url.pathname === "/api/admin/notifications/send" && request.method === "POST") {
+      return await sendQueuedNotifications(request, env);
+    }
+
     return jsonResponse({
       ok: false,
       error: "Not found",
@@ -117,7 +121,7 @@ async function readJson(request) {
   try {
     return await request.json();
   } catch {
-    throw new Error("JSONの形式が不正です");
+    return {};
   }
 }
 
@@ -604,4 +608,206 @@ async function updateCustomerAdmin(request, env) {
     ok: true,
     result: Array.isArray(result) ? result[0] : result,
   }, env);
+}
+
+// =========================================================
+// Notification APIs
+// =========================================================
+
+async function sendQueuedNotifications(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+  const limit = Math.min(Number(body.limit || 20), 50);
+
+  const token = requireEnv(env, "LINE_CHANNEL_ACCESS_TOKEN");
+
+  const notifications = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_notification_queue?shop_id=eq.${SHOP_ID}&status=eq.queued&select=id,reservation_id,notify_type,title,body,status,created_at&order=created_at.asc&limit=${limit}`
+  );
+
+  const results = [];
+
+  for (const notification of notifications || []) {
+    const result = await processOneNotification(env, token, notification);
+    results.push(result);
+  }
+
+  const summary = {
+    total: results.length,
+    sent: results.filter((r) => r.status === "sent").length,
+    failed: results.filter((r) => r.status === "failed").length,
+    skipped: results.filter((r) => r.status === "skipped").length,
+  };
+
+  return jsonResponse({
+    ok: true,
+    summary,
+    results,
+  }, env);
+}
+
+async function processOneNotification(env, token, notification) {
+  try {
+    const reservation = await getReservationForNotification(env, notification.reservation_id);
+
+    const destination = getNotificationDestination(env, notification, reservation);
+
+    if (!destination) {
+      return {
+        notificationId: notification.id,
+        notifyType: notification.notify_type,
+        status: "skipped",
+        message: "送信先がないためスキップしました",
+      };
+    }
+
+    const text = buildLineMessage(notification, reservation);
+
+    await pushLineMessage(token, destination, text);
+
+    await updateNotificationStatus(env, notification.id, "sent");
+
+    return {
+      notificationId: notification.id,
+      notifyType: notification.notify_type,
+      status: "sent",
+      to: maskLineUserId(destination),
+    };
+
+  } catch (err) {
+    console.error("Notification send failed:", err);
+
+    try {
+      await updateNotificationStatus(env, notification.id, "failed");
+    } catch (updateErr) {
+      console.error("Notification status update failed:", updateErr);
+    }
+
+    return {
+      notificationId: notification.id,
+      notifyType: notification.notify_type,
+      status: "failed",
+      message: err.message || "送信失敗",
+    };
+  }
+}
+
+async function getReservationForNotification(env, reservationId) {
+  if (!reservationId) {
+    return null;
+  }
+
+  const encodedId = encodeURIComponent(reservationId);
+
+  const data = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_reservations?id=eq.${encodedId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,seat_type,status,source`
+  );
+
+  return data?.[0] || null;
+}
+
+function isAdminNotification(notification) {
+  const type = notification?.notify_type || "";
+  return type.endsWith("_admin") || type.includes("_admin");
+}
+
+function getNotificationDestination(env, notification, reservation) {
+  if (isAdminNotification(notification)) {
+    return env.LINE_ADMIN_USER_ID || null;
+  }
+
+  return reservation?.line_user_id || null;
+}
+
+function buildLineMessage(notification, reservation) {
+  const title = notification.title || "居酒屋DPROからのお知らせ";
+  const body = notification.body || "";
+
+  const lines = [
+    `🏮 ${title}`,
+    "",
+    body,
+  ];
+
+  if (reservation) {
+    lines.push("");
+    lines.push("【予約情報】");
+    lines.push(`お名前：${reservation.line_name || "お客様"} 様`);
+    lines.push(`日時：${reservation.reserve_date || ""} ${formatTime(reservation.reserve_time)}`);
+    lines.push(`人数：${reservation.party_size || "-"}名`);
+  }
+
+  lines.push("");
+  lines.push("居酒屋DPRO");
+
+  return lines.join("\n");
+}
+
+function formatTime(value) {
+  if (!value) return "";
+  return String(value).slice(0, 5);
+}
+
+async function pushLineMessage(token, to, text) {
+  const res = await fetch("https://api.line.me/v2/bot/message/push", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      to,
+      messages: [
+        {
+          type: "text",
+          text: text.slice(0, 4900),
+        },
+      ],
+    }),
+  });
+
+  const responseText = await res.text();
+
+  if (!res.ok) {
+    let errorData = null;
+
+    try {
+      errorData = JSON.parse(responseText);
+    } catch {
+      errorData = responseText;
+    }
+
+    const message =
+      errorData?.message ||
+      errorData?.details?.[0]?.message ||
+      responseText ||
+      `LINE Push error: ${res.status}`;
+
+    throw new Error(message);
+  }
+}
+
+async function updateNotificationStatus(env, notificationId, status) {
+  const encodedId = encodeURIComponent(notificationId);
+
+  return await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_notification_queue?id=eq.${encodedId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        status,
+      }),
+    }
+  );
+}
+
+function maskLineUserId(value) {
+  if (!value) return null;
+  const text = String(value);
+  if (text.length <= 8) return "****";
+  return `${text.slice(0, 4)}****${text.slice(-4)}`;
 }
