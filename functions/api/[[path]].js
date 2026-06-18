@@ -74,6 +74,10 @@ export async function onRequest(context) {
       return await updateCustomerAdmin(request, env);
     }
 
+    if (url.pathname === "/api/admin/notifications/summary" && request.method === "GET") {
+      return await getNotificationSummary(request, env);
+    }
+
     if (url.pathname === "/api/admin/notifications/send" && request.method === "POST") {
       return await sendQueuedNotifications(request, env);
     }
@@ -369,6 +373,17 @@ function defaultShiftMaxGroups(shiftCode) {
 function formatTime(value) {
   if (!value) return "";
   return String(value).slice(0, 5);
+}
+
+function countByNotifyType(items) {
+  const result = {};
+
+  for (const item of items || []) {
+    const key = item.notify_type || "unknown";
+    result[key] = (result[key] || 0) + 1;
+  }
+
+  return result;
 }
 
 // =========================================================
@@ -1159,6 +1174,44 @@ async function updateSpecialDayShifts(request, env) {
 // =========================================================
 // Notification APIs
 // =========================================================
+
+async function getNotificationSummary(request, env) {
+  requireAdmin(request, env);
+
+  const queued = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_notification_queue?shop_id=eq.${SHOP_ID}&status=eq.queued&select=id,notify_type,title,created_at&order=created_at.asc&limit=1000`
+  );
+
+  const failed = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_notification_queue?shop_id=eq.${SHOP_ID}&status=eq.failed&select=id,notify_type,title,created_at&order=created_at.desc&limit=1000`
+  );
+
+  const sentRecent = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_notification_queue?shop_id=eq.${SHOP_ID}&status=eq.sent&select=id,notify_type,title,created_at&order=created_at.desc&limit=20`
+  );
+
+  const queuedItems = queued || [];
+  const failedItems = failed || [];
+  const sentRecentItems = sentRecent || [];
+
+  return jsonResponse({
+    ok: true,
+    summary: {
+      queuedCount: queuedItems.length,
+      failedCount: failedItems.length,
+      sentRecentCount: sentRecentItems.length,
+      oldestQueuedAt: queuedItems[0]?.created_at || null,
+      newestQueuedAt: queuedItems[queuedItems.length - 1]?.created_at || null,
+      queuedByType: countByNotifyType(queuedItems),
+      failedByType: countByNotifyType(failedItems),
+    },
+    queuedNotifications: queuedItems.slice(0, 20),
+    failedNotifications: failedItems.slice(0, 20),
+  }, env);
+}
 
 async function sendQueuedNotifications(request, env) {
   requireAdmin(request, env);
