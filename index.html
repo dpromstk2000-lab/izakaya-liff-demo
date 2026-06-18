@@ -207,6 +207,144 @@
         </div>
     </main>
 
+    <div id="change-modal" class="hidden fixed inset-0 z-[100] bg-black/60 px-4 py-6 overflow-y-auto">
+        <div class="bg-white max-w-md mx-auto rounded-2xl shadow-2xl overflow-hidden">
+            <div class="amber-gradient text-white p-5">
+                <div class="flex justify-between items-start gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold">予約を変更する</h2>
+                        <p id="change-current-text" class="text-xs text-amber-100 mt-1">現在の予約情報</p>
+                    </div>
+                    <button type="button" onclick="closeChangeModal()" class="bg-white/20 rounded-full w-8 h-8 text-lg leading-none">
+                        ×
+                    </button>
+                </div>
+            </div>
+
+            <form id="change-form" class="p-5 space-y-5">
+                <input type="hidden" id="change-reservation-id">
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-400 mb-1">変更後の来店日</label>
+                    <input type="text" id="change-date" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-stone-400 mb-1">変更後の時間</label>
+                        <select id="change-time" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 outline-none">
+                            <option value="17:00">17:00</option>
+                            <option value="17:30">17:30</option>
+                            <option value="18:00">18:00</option>
+                            <option value="18:30">18:30</option>
+                            <option value="19:00">19:00</option>
+                            <option value="19:30">19:30</option>
+                            <option value="20:00">20:00</option>
+                            <option value="20:30">20:30</option>
+                            <option value="21:00">21:00</option>
+                            <option value="21:30">21:30</option>
+                            <option value="22:00">22:00</option>
+                            <option value="22:30">22:30</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-stone-400 mb-1">変更後の人数</label>
+                        <select id="change-party-size" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 outline-none">
+                            <option value="1">1名</option>
+                            <option value="2">2名</option>
+                            <option value="3">3名</option>
+                            <option value="4">4名</option>
+                            <option value="5">5名</option>
+                            <option value="6">6名</option>
+                            <option value="7">7名</option>
+                            <option value="8">8名</option>
+                            <option value="9">9名</option>
+                            <option value="10">10名</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-400 mb-2">変更後の希望座席</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <label class="text-center">
+                            <input type="radio" name="change-seat-type" value="any" class="peer hidden">
+                            <div class="py-2 text-[11px] border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
+                                指定なし
+                            </div>
+                        </label>
+
+                        <label class="text-center">
+                            <input type="radio" name="change-seat-type" value="counter" class="peer hidden">
+                            <div class="py-2 text-[11px] border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
+                                カウンター
+                            </div>
+                        </label>
+
+                        <label class="text-center">
+                            <input type="radio" name="change-seat-type" value="table" class="peer hidden">
+                            <div class="py-2 text-[11px] border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
+                                テーブル
+                            </div>
+                        </label>
+
+                        <label class="text-center">
+                            <input type="radio" name="change-seat-type" value="private_room" class="peer hidden">
+                            <div class="py-2 text-[11px] border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
+                                個室
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-400 mb-2">変更後のお好み（複数選択可）</label>
+                    <div class="flex flex-wrap gap-2">
+                        <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
+                            <input type="checkbox" name="change-preferences" value="ビール" class="hidden">
+                            🍺 ビール
+                        </label>
+
+                        <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
+                            <input type="checkbox" name="change-preferences" value="レモンサワー" class="hidden">
+                            🍋 レモンサワー
+                        </label>
+
+                        <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
+                            <input type="checkbox" name="change-preferences" value="ハイボール" class="hidden">
+                            🥃 ハイボール
+                        </label>
+
+                        <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
+                            <input type="checkbox" name="change-preferences" value="焼酎・日本酒" class="hidden">
+                            🍶 焼酎・日本酒
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-400 mb-1">変更理由</label>
+                    <textarea id="change-reason" rows="3" class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 outline-none text-sm" placeholder="例：人数変更のため、時間を遅らせたい など"></textarea>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-100 text-amber-700 text-xs rounded-xl p-3 leading-relaxed">
+                    変更すると、現在の予約はキャンセル扱いになり、新しい予約が仮予約として作成されます。店舗からの確定連絡をお待ちください。
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="closeChangeModal()" class="bg-stone-100 text-stone-600 font-bold py-3 rounded-xl active:scale-95 transition">
+                        戻る
+                    </button>
+
+                    <button type="submit" class="amber-gradient text-white font-bold py-3 rounded-xl active:scale-95 transition">
+                        変更を送信する
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <footer class="text-center py-8 text-[10px] text-stone-400">
         &copy; PREMIUM KOHAKUTEI RESERVATION SYSTEM
     </footer>
@@ -217,6 +355,8 @@
 
         let userProfile = null;
         let fp = null;
+        let changeFp = null;
+        let currentReservations = [];
 
         const SHOP_STATUS_LABELS = {
             open: "空席あり",
@@ -397,6 +537,13 @@
                 disableMobile: true
             });
 
+            changeFp = flatpickr("#change-date", {
+                locale: "ja",
+                minDate: new Date(),
+                dateFormat: "Y-m-d",
+                disableMobile: true
+            });
+
             try {
                 await liff.init({ liffId: LIFF_ID });
 
@@ -460,13 +607,19 @@
                     });
                 }
 
+                const disableRules = [
+                    ...closedDates,
+                    function(date) {
+                        return closedWeekdays.includes(date.getDay());
+                    }
+                ];
+
                 if (fp) {
-                    fp.set("disable", [
-                        ...closedDates,
-                        function(date) {
-                            return closedWeekdays.includes(date.getDay());
-                        }
-                    ]);
+                    fp.set("disable", disableRules);
+                }
+
+                if (changeFp) {
+                    changeFp.set("disable", disableRules);
                 }
 
             } catch (err) {
@@ -548,15 +701,15 @@
                     }
                 });
 
-                const reservations = data.reservations || [];
+                currentReservations = data.reservations || [];
 
-                if (!reservations.length) {
+                if (!currentReservations.length) {
                     listEl.innerHTML =
                         '<p class="text-center text-stone-400 py-12 text-sm">現在の予約はありません</p>';
                     return;
                 }
 
-                listEl.innerHTML = reservations.map(res => {
+                listEl.innerHTML = currentReservations.map(res => {
                     const statusLabel = RESERVATION_STATUS_LABELS[res.status] || res.status;
                     const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
 
@@ -573,15 +726,24 @@
                             ).join(" ")
                             : '<span class="text-[10px] text-stone-300">好みなし</span>';
 
-                    const cancelButton =
+                    const actionButtons =
                         ["pending", "confirmed"].includes(res.status)
                             ? `
-                                <button
-                                    onclick="cancelReservation('${escapeJs(res.id)}', '${escapeJs(res.reserve_date)}', '${escapeJs(formatTime(res.reserve_time))}')"
-                                    class="w-full mt-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-3 rounded-xl text-xs active:scale-95 transition"
-                                >
-                                    この予約をキャンセルする
-                                </button>
+                                <div class="grid grid-cols-1 gap-2 mt-4">
+                                    <button
+                                        onclick="openChangeModal('${escapeJs(res.id)}')"
+                                        class="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-3 rounded-xl text-xs active:scale-95 transition"
+                                    >
+                                        この予約を変更する
+                                    </button>
+
+                                    <button
+                                        onclick="cancelReservation('${escapeJs(res.id)}', '${escapeJs(res.reserve_date)}', '${escapeJs(formatTime(res.reserve_time))}')"
+                                        class="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-3 rounded-xl text-xs active:scale-95 transition"
+                                    >
+                                        この予約をキャンセルする
+                                    </button>
+                                </div>
                             `
                             : "";
 
@@ -606,7 +768,7 @@
                                 ${prefsHtml}
                             </div>
 
-                            ${cancelButton}
+                            ${actionButtons}
                         </div>
                     `;
                 }).join("");
@@ -679,6 +841,144 @@
                 alert("キャンセルできませんでした。\n" + err.message);
             }
         }
+
+        function openChangeModal(reservationId) {
+            const reservation = currentReservations.find(res => res.id === reservationId);
+
+            if (!reservation) {
+                alert("変更対象の予約が見つかりません。");
+                return;
+            }
+
+            document.getElementById("change-reservation-id").value = reservation.id;
+
+            document.getElementById("change-current-text").innerText =
+                `現在：${reservation.reserve_date} ${formatTime(reservation.reserve_time)} / ${reservation.party_size}名 / ${SEAT_LABELS[reservation.seat_type] || "指定なし"}`;
+
+            if (changeFp) {
+                changeFp.setDate(reservation.reserve_date);
+            } else {
+                document.getElementById("change-date").value = reservation.reserve_date;
+            }
+
+            document.getElementById("change-time").value = formatTime(reservation.reserve_time);
+            document.getElementById("change-party-size").value = String(reservation.party_size || 2);
+
+            const seatValue = reservation.seat_type || "any";
+            document.querySelectorAll('input[name="change-seat-type"]').forEach(input => {
+                input.checked = input.value === seatValue;
+            });
+
+            if (!document.querySelector('input[name="change-seat-type"]:checked')) {
+                document.querySelector('input[name="change-seat-type"][value="any"]').checked = true;
+            }
+
+            document.querySelectorAll('input[name="change-preferences"]').forEach(input => {
+                input.checked = Array.isArray(reservation.preferences)
+                    ? reservation.preferences.includes(input.value)
+                    : false;
+            });
+
+            document.getElementById("change-reason").value = "予約内容を変更したいため";
+            document.getElementById("change-modal").classList.remove("hidden");
+        }
+
+        function closeChangeModal() {
+            document.getElementById("change-modal").classList.add("hidden");
+        }
+
+        document.getElementById("change-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = "変更中...";
+
+            try {
+                const idToken = await getValidLineIdToken();
+
+                const oldReservationId = document.getElementById("change-reservation-id").value;
+                const reserveDate = document.getElementById("change-date").value;
+                const reserveTime = document.getElementById("change-time").value;
+                const partySize = parseInt(document.getElementById("change-party-size").value, 10);
+                const seatType = document.querySelector('input[name="change-seat-type"]:checked')?.value || "any";
+                const reason = document.getElementById("change-reason").value.trim() || "顧客による予約変更";
+
+                const preferences = Array.from(
+                    document.querySelectorAll('input[name="change-preferences"]:checked')
+                ).map(input => input.value);
+
+                if (!oldReservationId) {
+                    throw new Error("変更対象の予約がありません");
+                }
+
+                if (!reserveDate) {
+                    throw new Error("変更後の日付を選択してください");
+                }
+
+                if (!reserveTime) {
+                    throw new Error("変更後の時間を選択してください");
+                }
+
+                if (!partySize || partySize < 1) {
+                    throw new Error("変更後の人数を選択してください");
+                }
+
+                if (!confirm(`予約を変更しますか？\n\n変更後：${reserveDate} ${reserveTime} / ${partySize}名\n理由：${reason}`)) {
+                    return;
+                }
+
+                const data = await apiFetch("/api/reservations/change", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        idToken,
+                        oldReservationId,
+                        reserveDate,
+                        reserveTime,
+                        partySize,
+                        seatType,
+                        preferences,
+                        reason
+                    })
+                });
+
+                if (typeof liff !== "undefined" && liff.isInClient()) {
+                    try {
+                        await liff.sendMessages([{
+                            type: "text",
+                            text:
+                                `🏮 予約変更受付\n\n` +
+                                `変更後：${reserveDate} ${reserveTime}\n` +
+                                `人数：${partySize}名\n` +
+                                `席種：${SEAT_LABELS[seatType] || "指定なし"}\n` +
+                                `理由：${reason}\n\n` +
+                                `店舗からの確定連絡をお待ちください。`
+                        }]);
+                    } catch (msgErr) {
+                        console.warn("LIFFメッセージ送信はスキップされました:", msgErr);
+                    }
+                }
+
+                alert(data.result?.message || "予約変更を受け付けました。店舗からの確定連絡をお待ちください。");
+
+                closeChangeModal();
+                await loadHistory();
+
+            } catch (err) {
+                console.error("予約変更エラー:", err);
+
+                if (handleAuthExpiredError(err)) {
+                    return;
+                }
+
+                alert("予約変更できませんでした。\n" + err.message);
+
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "変更を送信する";
+            }
+        });
 
         document.getElementById("reserve-form").addEventListener("submit", async (e) => {
             e.preventDefault();
