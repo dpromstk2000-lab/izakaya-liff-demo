@@ -71,6 +71,7 @@
 
     <main id="admin-app" class="hidden max-w-5xl mx-auto p-4 space-y-6 mt-4">
 
+        <!-- 店舗ステータス -->
         <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
             <div class="flex justify-between items-center mb-3">
                 <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
@@ -104,6 +105,159 @@
             </p>
         </section>
 
+        <!-- 休業日・特別営業日 -->
+        <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-start gap-4 mb-4">
+                <div>
+                    <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                        直近3か月の休業日・特別営業日設定
+                    </h2>
+                    <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                        年末年始、臨時休業、貸切営業、特別営業時間を設定できます。休業日は顧客LIFFの予約カレンダーで選択不可になります。
+                    </p>
+                </div>
+
+                <button onclick="fetchSpecialDays()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                    🔄 更新
+                </button>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">対象日</label>
+                        <input
+                            id="special-day-date"
+                            type="date"
+                            class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">種別</label>
+                        <select
+                            id="special-day-type"
+                            onchange="toggleSpecialDayType()"
+                            class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
+                        >
+                            <option value="closed">臨時休業</option>
+                            <option value="open">特別営業</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">メモ</label>
+                        <input
+                            id="special-day-note"
+                            type="text"
+                            class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
+                            placeholder="例：年末年始休み / 貸切営業"
+                        >
+                    </div>
+                </div>
+
+                <div id="special-open-fields" class="hidden space-y-3">
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">開店</label>
+                            <input
+                                id="special-open-time"
+                                type="time"
+                                value="17:00"
+                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
+                            >
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">閉店</label>
+                            <input
+                                id="special-close-time"
+                                type="time"
+                                value="23:00"
+                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
+                            >
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">L.O.</label>
+                            <input
+                                id="special-last-order-time"
+                                type="time"
+                                value="22:30"
+                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">時間刻み</label>
+                            <select
+                                id="special-slot-interval"
+                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
+                            >
+                                <option value="">通常設定</option>
+                                <option value="15">15分</option>
+                                <option value="30" selected>30分</option>
+                                <option value="60">60分</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">最大人数</label>
+                            <input
+                                id="special-max-guests"
+                                type="number"
+                                min="0"
+                                value="20"
+                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
+                            >
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">最大組数</label>
+                            <input
+                                id="special-max-groups"
+                                type="number"
+                                min="0"
+                                value="8"
+                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button
+                        onclick="saveSpecialDay()"
+                        id="btn-save-special-day"
+                        class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs active:scale-95 transition"
+                    >
+                        保存する
+                    </button>
+
+                    <button
+                        onclick="clearSpecialDayForm()"
+                        class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-3 rounded-xl text-xs active:scale-95 transition"
+                    >
+                        入力クリア
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-5">
+                <div class="flex justify-between items-center mb-2">
+                    <p class="text-xs font-bold text-slate-500">登録済みの特別日</p>
+                    <p id="special-days-range" class="text-[10px] text-slate-400">読み込み中...</p>
+                </div>
+
+                <div id="special-days-list" class="space-y-2">
+                    <p class="text-center text-slate-400 text-xs py-4">読み込み中...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- リマインド・通知 -->
         <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                 <div class="flex justify-between items-start gap-4">
@@ -118,9 +272,7 @@
                 </div>
 
                 <div class="mt-4 grid grid-cols-1 gap-2">
-                    <label class="text-xs font-bold text-slate-500">
-                        対象日
-                    </label>
+                    <label class="text-xs font-bold text-slate-500">対象日</label>
 
                     <div class="grid grid-cols-2 gap-2">
                         <input
@@ -173,6 +325,7 @@
             </div>
         </section>
 
+        <!-- 日付ナビ -->
         <section class="bg-slate-900 text-white rounded-2xl shadow-lg overflow-hidden">
             <div class="flex justify-between items-center p-2">
                 <button onclick="changeDate(-1)" class="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition active:scale-95">
@@ -211,6 +364,7 @@
             </div>
         </section>
 
+        <!-- フィルタ -->
         <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
             <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
                 <button onclick="setStatusFilter('all')" id="filter-all" class="filter-btn bg-slate-900 text-white rounded-xl py-2 text-xs font-bold">
@@ -231,6 +385,7 @@
             </div>
         </section>
 
+        <!-- 予約リスト -->
         <section>
             <div class="flex justify-between items-end mb-3 px-1">
                 <div>
@@ -289,9 +444,12 @@
         let adminToken = localStorage.getItem("iz_demo_admin_token") || "";
         let currentReservations = [];
         let statusFilter = "all";
+        let currentSpecialDays = [];
 
         window.addEventListener("DOMContentLoaded", () => {
             setTomorrowReminderDate();
+            setTodaySpecialDayDate();
+            toggleSpecialDayType();
 
             if (!adminToken) {
                 showAuthPanel();
@@ -300,6 +458,7 @@
 
             showAdminApp();
             fetchShopStatus();
+            fetchSpecialDays();
             updateDateDisplay();
         });
 
@@ -326,6 +485,7 @@
 
             showAdminApp();
             fetchShopStatus();
+            fetchSpecialDays();
             updateDateDisplay();
         }
 
@@ -411,6 +571,14 @@
 
             if (input) {
                 input.value = formatDate(tomorrow);
+            }
+        }
+
+        function setTodaySpecialDayDate() {
+            const input = document.getElementById("special-day-date");
+
+            if (input) {
+                input.value = formatDate(new Date());
             }
         }
 
@@ -545,6 +713,225 @@
             if (status === "closed") activeButton.classList.add("bg-slate-700");
         }
 
+        function toggleSpecialDayType() {
+            const type = document.getElementById("special-day-type")?.value;
+            const fields = document.getElementById("special-open-fields");
+
+            if (!fields) return;
+
+            if (type === "open") {
+                fields.classList.remove("hidden");
+            } else {
+                fields.classList.add("hidden");
+            }
+        }
+
+        async function fetchSpecialDays() {
+            const listEl = document.getElementById("special-days-list");
+            const rangeEl = document.getElementById("special-days-range");
+
+            listEl.innerHTML = '<p class="text-center text-slate-400 text-xs py-4 animate-pulse">読み込み中...</p>';
+
+            try {
+                const data = await apiFetch("/api/admin/special-days", {
+                    method: "GET",
+                    headers: adminHeaders()
+                });
+
+                currentSpecialDays = data.specialDays || [];
+
+                rangeEl.innerText = `${data.from || "-"} 〜 ${data.to || "-"}`;
+
+                renderSpecialDays();
+
+            } catch (err) {
+                console.error("特別日取得エラー:", err);
+                listEl.innerHTML = `<p class="text-center text-red-500 text-xs py-4">取得エラー: ${escapeHtml(err.message)}</p>`;
+                rangeEl.innerText = "取得失敗";
+            }
+        }
+
+        function renderSpecialDays() {
+            const listEl = document.getElementById("special-days-list");
+
+            if (!currentSpecialDays.length) {
+                listEl.innerHTML = `
+                    <div class="text-center text-slate-400 text-xs py-6 bg-slate-50 rounded-xl border border-slate-100">
+                        登録済みの特別日はありません
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = currentSpecialDays.map(day => {
+                const typeLabel = day.is_closed ? "臨時休業" : "特別営業";
+                const badgeClass = day.is_closed
+                    ? "bg-red-100 text-red-700 border-red-200"
+                    : "bg-emerald-100 text-emerald-700 border-emerald-200";
+
+                const detail = day.is_closed
+                    ? "終日休業"
+                    : `${formatTime(day.open_time)}〜${formatTime(day.close_time)} / L.O. ${formatTime(day.last_order_time)} / ${day.slot_interval_minutes || "通常"}分刻み / ${day.max_guests_per_slot ?? "通常"}名 / ${day.max_groups_per_slot ?? "通常"}組`;
+
+                return `
+                    <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="font-bold text-sm text-slate-700">${escapeHtml(day.target_date)}</p>
+                                <span class="text-[10px] px-2 py-1 rounded-full border font-bold ${badgeClass}">
+                                    ${typeLabel}
+                                </span>
+                            </div>
+
+                            <p class="text-xs text-slate-500 mt-1">${escapeHtml(detail)}</p>
+
+                            ${day.note ? `<p class="text-xs text-slate-400 mt-1">メモ: ${escapeHtml(day.note)}</p>` : ""}
+                        </div>
+
+                        <div class="flex flex-col gap-2 shrink-0">
+                            <button
+                                onclick="editSpecialDay('${escapeJs(day.target_date)}')"
+                                class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold px-3 py-1.5 rounded-lg text-[10px]"
+                            >
+                                編集
+                            </button>
+
+                            <button
+                                onclick="deleteSpecialDay('${escapeJs(day.target_date)}')"
+                                class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold px-3 py-1.5 rounded-lg text-[10px]"
+                            >
+                                削除
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function editSpecialDay(targetDate) {
+            const day = currentSpecialDays.find(item => item.target_date === targetDate);
+
+            if (!day) {
+                alert("編集対象が見つかりません。");
+                return;
+            }
+
+            document.getElementById("special-day-date").value = day.target_date;
+            document.getElementById("special-day-type").value = day.is_closed ? "closed" : "open";
+            document.getElementById("special-day-note").value = day.note || "";
+
+            document.getElementById("special-open-time").value = formatTime(day.open_time) || "17:00";
+            document.getElementById("special-close-time").value = formatTime(day.close_time) || "23:00";
+            document.getElementById("special-last-order-time").value = formatTime(day.last_order_time) || "22:30";
+            document.getElementById("special-slot-interval").value = day.slot_interval_minutes || "";
+            document.getElementById("special-max-guests").value = day.max_guests_per_slot ?? "";
+            document.getElementById("special-max-groups").value = day.max_groups_per_slot ?? "";
+
+            toggleSpecialDayType();
+            showToast("編集内容をフォームに読み込みました。");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function clearSpecialDayForm() {
+            setTodaySpecialDayDate();
+            document.getElementById("special-day-type").value = "closed";
+            document.getElementById("special-day-note").value = "";
+            document.getElementById("special-open-time").value = "17:00";
+            document.getElementById("special-close-time").value = "23:00";
+            document.getElementById("special-last-order-time").value = "22:30";
+            document.getElementById("special-slot-interval").value = "30";
+            document.getElementById("special-max-guests").value = "20";
+            document.getElementById("special-max-groups").value = "8";
+            toggleSpecialDayType();
+        }
+
+        async function saveSpecialDay() {
+            const button = document.getElementById("btn-save-special-day");
+
+            const targetDate = document.getElementById("special-day-date").value;
+            const type = document.getElementById("special-day-type").value;
+            const isClosed = type === "closed";
+            const note = document.getElementById("special-day-note").value.trim();
+
+            if (!targetDate) {
+                alert("対象日を選択してください。");
+                return;
+            }
+
+            const payload = {
+                targetDate,
+                isClosed,
+                note,
+                actorId: "admin_dashboard"
+            };
+
+            if (!isClosed) {
+                payload.openTime = document.getElementById("special-open-time").value;
+                payload.closeTime = document.getElementById("special-close-time").value;
+                payload.lastOrderTime = document.getElementById("special-last-order-time").value;
+                payload.slotIntervalMinutes = document.getElementById("special-slot-interval").value;
+                payload.maxGuestsPerSlot = document.getElementById("special-max-guests").value;
+                payload.maxGroupsPerSlot = document.getElementById("special-max-groups").value;
+
+                if (!payload.openTime || !payload.closeTime) {
+                    alert("特別営業日は開店時間と閉店時間が必要です。");
+                    return;
+                }
+            }
+
+            const label = isClosed ? "臨時休業" : "特別営業";
+
+            if (!confirm(`${targetDate} を「${label}」として保存しますか？`)) {
+                return;
+            }
+
+            button.disabled = true;
+            button.innerText = "保存中...";
+
+            try {
+                const data = await apiFetch("/api/admin/special-days/upsert", {
+                    method: "POST",
+                    headers: adminHeaders(),
+                    body: JSON.stringify(payload)
+                });
+
+                showToast(data.result?.message || "特別日設定を保存しました。");
+                await fetchSpecialDays();
+
+            } catch (err) {
+                console.error("特別日保存エラー:", err);
+                alert("保存できませんでした。\n" + err.message);
+
+            } finally {
+                button.disabled = false;
+                button.innerText = "保存する";
+            }
+        }
+
+        async function deleteSpecialDay(targetDate) {
+            if (!confirm(`${targetDate} の特別日設定を削除しますか？`)) {
+                return;
+            }
+
+            try {
+                const data = await apiFetch("/api/admin/special-days/delete", {
+                    method: "POST",
+                    headers: adminHeaders(),
+                    body: JSON.stringify({
+                        targetDate,
+                        actorId: "admin_dashboard"
+                    })
+                });
+
+                showToast(data.result?.message || "特別日設定を削除しました。");
+                await fetchSpecialDays();
+
+            } catch (err) {
+                console.error("特別日削除エラー:", err);
+                alert("削除できませんでした。\n" + err.message);
+            }
+        }
+
         async function enqueueReminders() {
             const button = document.getElementById("btn-enqueue-reminders");
             const resultEl = document.getElementById("reminder-result");
@@ -575,8 +962,8 @@
                 });
 
                 const result = data.result || {};
-
                 const lines = [];
+
                 lines.push("前日リマインド作成結果");
                 lines.push(`対象日: ${result.target_date || result.targetDate || targetDate}`);
                 lines.push(`新規作成: ${result.inserted_count ?? 0}件`);
@@ -628,8 +1015,8 @@
 
                 const summary = data.summary || {};
                 const results = data.results || [];
-
                 const lines = [];
+
                 lines.push("通知送信結果");
                 lines.push(`合計: ${summary.total ?? 0}`);
                 lines.push(`送信成功: ${summary.sent ?? 0}`);
