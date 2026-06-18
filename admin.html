@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>居酒屋DPRO 管理画面</title>
+
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
@@ -14,43 +16,36 @@
     }
 
     ::-webkit-scrollbar {
-      display: none;
+      width: 0;
+      height: 0;
     }
 
     .panel {
       background: white;
       border: 1px solid #e2e8f0;
-      border-radius: 1rem;
+      border-radius: 1.25rem;
       box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-    }
-
-    .mini-label {
-      font-size: 11px;
-      font-weight: 800;
-      color: #64748b;
-      margin-bottom: 4px;
-      display: block;
     }
 
     .input {
       width: 100%;
       border: 1px solid #cbd5e1;
-      border-radius: 0.75rem;
-      padding: 0.7rem;
-      font-size: 0.875rem;
+      border-radius: 0.85rem;
+      padding: 0.75rem 0.85rem;
       background: white;
       outline: none;
+      font-size: 14px;
     }
 
     .input:focus {
       border-color: #f59e0b;
-      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.22);
     }
 
     .btn {
       font-weight: 900;
-      border-radius: 0.9rem;
-      padding: 0.8rem 1rem;
+      border-radius: 0.85rem;
+      padding: 0.75rem 1rem;
       transition: 0.15s;
     }
 
@@ -58,244 +53,253 @@
       transform: scale(0.98);
     }
 
-    .settings-drawer {
-      transform: translateX(100%);
-      transition: transform 0.25s ease;
+    .mini-label {
+      font-size: 11px;
+      font-weight: 900;
+      color: #64748b;
+      display: block;
+      margin-bottom: 5px;
     }
 
-    .settings-drawer.open {
-      transform: translateX(0);
+    .drawer-bg {
+      background: rgba(15, 23, 42, 0.55);
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 900;
+      padding: 0.25rem 0.55rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+
+    .small-input {
+      border: 1px solid #cbd5e1;
+      border-radius: 0.65rem;
+      padding: 0.5rem;
+      font-size: 12px;
+      background: white;
+      outline: none;
+      width: 100%;
+    }
+
+    .small-input:focus {
+      border-color: #f59e0b;
     }
   </style>
 </head>
 
-<body class="bg-slate-100 text-slate-800 min-h-screen pb-24">
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-20">
 
-  <div id="toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white text-sm font-bold px-4 py-3 rounded-xl shadow-lg"></div>
+  <div id="toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[300] bg-slate-900 text-white text-sm font-black px-4 py-3 rounded-xl shadow-lg"></div>
 
   <!-- Login -->
-  <main id="login-view" class="min-h-screen flex items-center justify-center p-4">
-    <section class="panel w-full max-w-md p-6">
-      <div class="text-center mb-6">
-        <div class="text-5xl mb-3">🏮</div>
-        <h1 class="text-2xl font-black">居酒屋DPRO 管理画面</h1>
-        <p class="text-xs text-slate-400 mt-2">管理トークンを入力してください</p>
+  <section id="login-section" class="max-w-md mx-auto px-4 py-16">
+    <div class="panel p-6">
+      <h1 class="text-2xl font-black">🏮 居酒屋DPRO 管理画面</h1>
+      <p class="text-sm text-slate-500 mt-2">管理者トークンを入力してください。</p>
+
+      <div class="mt-6">
+        <label class="mini-label">ADMIN TOKEN</label>
+        <input id="admin-token-input" type="password" class="input" placeholder="管理者トークン" />
       </div>
 
-      <div class="space-y-3">
-        <input id="admin-token-input" type="password" class="input" placeholder="ADMIN_TOKEN" />
-        <button onclick="loginAdmin()" class="btn w-full bg-slate-900 text-white">ログイン</button>
-      </div>
+      <button onclick="loginAdmin()" class="btn w-full bg-slate-900 text-white mt-5">
+        ログイン
+      </button>
 
-      <p class="text-[11px] text-slate-400 mt-4 leading-relaxed">
-        Cloudflare Pages の環境変数 <b>ADMIN_TOKEN</b> と同じ値を入力します。
-      </p>
-    </section>
-  </main>
+      <p id="login-error" class="text-sm text-red-600 font-bold mt-3"></p>
+    </div>
+  </section>
 
   <!-- App -->
-  <div id="app-view" class="hidden">
+  <section id="app-section" class="hidden">
+    <header class="bg-slate-900 text-white">
+      <div class="max-w-7xl mx-auto px-4 py-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 class="text-2xl font-black">🏮 居酒屋DPRO 管理画面</h1>
+            <p class="text-xs text-slate-400 mt-1">予約・営業日・LINE通知管理</p>
+          </div>
 
-    <header class="bg-slate-900 text-white sticky top-0 z-40 shadow">
-      <div class="max-w-6xl mx-auto p-4 flex items-center justify-between gap-3">
-        <div>
-          <h1 class="text-xl font-black">🏮 居酒屋DPRO 管理画面</h1>
-          <p class="text-[11px] text-slate-400 mt-1">予約・営業日・通知・顧客管理</p>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button onclick="openSettings()" class="bg-white/10 hover:bg-white/20 text-white font-black px-4 py-2 rounded-xl text-sm">
-            ⚙ 店舗設定
-          </button>
-          <button onclick="logoutAdmin()" class="bg-red-500/90 hover:bg-red-600 text-white font-black px-4 py-2 rounded-xl text-sm">
-            ログアウト
-          </button>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="openSettings()" class="btn bg-white text-slate-900 text-sm">
+              ⚙ 店舗設定
+            </button>
+            <button onclick="logoutAdmin()" class="btn bg-slate-700 text-white text-sm">
+              ログアウト
+            </button>
+          </div>
         </div>
       </div>
     </header>
 
-    <main class="max-w-6xl mx-auto p-4 space-y-4">
+    <main class="max-w-7xl mx-auto px-4 py-5 space-y-5">
 
-      <!-- Shop Status -->
-      <section class="panel p-4">
-        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h2 class="text-lg font-black">店舗ステータス</h2>
-            <p id="current-shop-status" class="text-sm text-slate-500 mt-1">現在: 取得中...</p>
+      <!-- Top cards -->
+      <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="panel p-5">
+          <h2 class="text-lg font-black">店舗ステータス</h2>
+          <p class="text-xs text-slate-400 mt-1">顧客側に表示される空席状況です。</p>
+
+          <div class="grid grid-cols-2 gap-2 mt-4">
+            <button onclick="quickShopStatus('open','空席あり')" class="btn bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm">空席あり</button>
+            <button onclick="quickShopStatus('few','残りわずか')" class="btn bg-amber-50 text-amber-700 border border-amber-200 text-sm">残りわずか</button>
+            <button onclick="quickShopStatus('full','満席')" class="btn bg-red-50 text-red-700 border border-red-200 text-sm">満席</button>
+            <button onclick="quickShopStatus('closed','本日終了')" class="btn bg-slate-100 text-slate-700 border border-slate-200 text-sm">本日終了</button>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-2 flex-1 md:max-w-3xl">
-            <select id="shop-status-select" class="input">
-              <option value="open">空席あり</option>
-              <option value="few">残りわずか</option>
-              <option value="full">満席</option>
-              <option value="closed">受付停止</option>
-            </select>
-
-            <input id="shop-status-message" class="input md:col-span-2" placeholder="表示メッセージ 例：空席あり" />
-
-            <button onclick="saveShopStatus()" class="btn bg-slate-900 text-white">
-              保存
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- Reminder / Notification -->
-      <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="panel p-4">
-          <h2 class="text-lg font-black">前日リマインド作成</h2>
-          <p class="text-xs text-slate-400 mt-1">指定日の確定予約にリマインド通知キューを作成します。</p>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
-            <input id="reminder-target-date" type="date" class="input sm:col-span-2" />
-            <button onclick="setTomorrowReminderDate()" class="btn bg-slate-100 text-slate-700 border border-slate-200">
-              明日
-            </button>
+          <div class="mt-4">
+            <label class="mini-label">表示メッセージ</label>
+            <input id="shop-status-message" class="input" placeholder="例：空席あり" />
           </div>
 
-          <button onclick="enqueueReminders()" class="btn w-full bg-amber-600 text-white mt-3">
-            リマインド作成
+          <button onclick="saveShopStatus()" class="btn w-full bg-slate-900 text-white mt-3">
+            ステータス保存
           </button>
 
-          <p id="reminder-result" class="text-xs text-slate-500 mt-3"></p>
+          <p id="shop-status-current" class="text-xs text-slate-500 mt-3"></p>
         </div>
 
-        <div class="panel p-4">
+        <div class="panel p-5">
           <div class="flex items-start justify-between gap-3">
             <div>
               <h2 class="text-lg font-black">LINE通知</h2>
-              <p class="text-xs text-slate-400 mt-1">
-                予約受付・確定・キャンセル・リマインド通知をまとめて送信します。
-              </p>
+              <p class="text-xs text-slate-400 mt-1">送信待ち通知をまとめて送信します。</p>
             </div>
-
-            <button onclick="loadNotificationSummary()" class="text-xs font-black text-blue-600 bg-blue-50 border border-blue-200 px-3 py-2 rounded-xl shrink-0">
+            <button onclick="loadNotificationSummary()" class="text-xs font-black text-blue-600 bg-blue-50 border border-blue-200 px-3 py-2 rounded-xl">
               更新
             </button>
           </div>
 
-          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 mt-4">
-            <p class="text-sm font-black text-slate-700">
-              送信待ち通知：
-              <span id="notification-queued-count" class="text-2xl text-emerald-600 align-middle">-</span>
-              件
-            </p>
-
-            <p id="notification-failed-count" class="text-xs text-slate-500 mt-2">
-              失敗通知：-件
-            </p>
-
-            <p id="notification-type-summary" class="text-[11px] text-slate-400 mt-2 leading-relaxed">
-              内訳：取得中...
-            </p>
+          <div class="grid grid-cols-2 gap-3 mt-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+              <p class="text-xs font-black text-blue-600">送信待ち通知</p>
+              <p id="queued-count" class="text-3xl font-black text-blue-700 mt-1">-</p>
+            </div>
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-4">
+              <p class="text-xs font-black text-red-600">失敗通知</p>
+              <p id="failed-count" class="text-3xl font-black text-red-700 mt-1">-</p>
+            </div>
           </div>
 
-          <button id="btn-send-notifications" onclick="sendNotifications()" class="btn w-full bg-emerald-600 text-white mt-3">
+          <div id="notification-type-summary" class="text-xs text-slate-500 mt-3"></div>
+
+          <button id="btn-send-notifications" onclick="sendNotifications()" class="btn w-full bg-blue-600 text-white mt-4">
             LINE通知を送信
           </button>
 
-          <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
-            送信待ち通知を古い順に最大20件ずつ送信します。送信後、件数は自動更新されます。
-          </p>
-
           <p id="notification-result" class="text-xs text-slate-500 mt-3"></p>
+        </div>
+
+        <div class="panel p-5">
+          <h2 class="text-lg font-black">前日リマインド</h2>
+          <p class="text-xs text-slate-400 mt-1">確定予約に対してリマインド通知を作成します。</p>
+
+          <div class="mt-4">
+            <label class="mini-label">対象日</label>
+            <input id="reminder-target-date" type="date" class="input" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 mt-3">
+            <button onclick="setReminderTomorrow()" class="btn bg-slate-100 text-slate-700 text-sm">
+              明日に設定
+            </button>
+            <button onclick="enqueueReminders()" class="btn bg-amber-600 text-white text-sm">
+              作成
+            </button>
+          </div>
+
+          <p id="reminder-result" class="text-xs text-slate-500 mt-3"></p>
         </div>
       </section>
 
-      <!-- Date / Filters -->
-      <section class="panel p-4">
-        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+      <!-- Date nav -->
+      <section class="panel p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 class="text-lg font-black">予約一覧</h2>
-            <p id="day-summary" class="text-sm text-slate-500 mt-1">読み込み中...</p>
+            <h2 class="text-xl font-black">予約一覧</h2>
+            <p class="text-xs text-slate-400 mt-1">予約名をメイン表示します。LINE名は補助情報です。</p>
           </div>
 
-          <div class="flex flex-col sm:flex-row gap-2">
-            <button onclick="moveDate(-1)" class="btn bg-slate-100 text-slate-700 border border-slate-200">前日</button>
-            <input id="admin-date" type="date" class="input" onchange="changeAdminDate()" />
-            <button onclick="moveDate(1)" class="btn bg-slate-100 text-slate-700 border border-slate-200">翌日</button>
-            <button onclick="loadAdminDay()" class="btn bg-slate-900 text-white">更新</button>
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="moveDate(-1)" class="btn bg-white border border-slate-200 text-slate-700 text-sm">前日</button>
+            <input id="admin-date" type="date" class="input w-auto" onchange="loadAdminDay()" />
+            <button onclick="moveDate(1)" class="btn bg-white border border-slate-200 text-slate-700 text-sm">翌日</button>
+            <button onclick="setToday()" class="btn bg-slate-900 text-white text-sm">今日</button>
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-2 mt-4 text-xs font-bold">
-          <button onclick="setReservationFilter('active')" id="filter-active" class="filter-btn bg-slate-900 text-white px-3 py-2 rounded-xl">有効のみ</button>
-          <button onclick="setReservationFilter('all')" id="filter-all" class="filter-btn bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-xl">すべて</button>
-          <button onclick="setReservationFilter('pending')" id="filter-pending" class="filter-btn bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-xl">仮予約</button>
-          <button onclick="setReservationFilter('confirmed')" id="filter-confirmed" class="filter-btn bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-xl">確定</button>
-        </div>
+        <div id="day-summary" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5"></div>
       </section>
 
       <section id="reservation-list" class="space-y-3">
-        <div class="panel p-8 text-center text-slate-400">読み込み中...</div>
+        <div class="panel p-5 text-center text-slate-400 font-bold">読み込み中...</div>
       </section>
 
     </main>
-  </div>
+  </section>
 
-  <!-- Settings Overlay -->
-  <div id="settings-overlay" class="hidden fixed inset-0 bg-black/40 z-[100]" onclick="closeSettingsByOverlay(event)">
-    <aside id="settings-drawer" class="settings-drawer fixed right-0 top-0 h-full w-full max-w-3xl bg-slate-50 shadow-2xl overflow-y-auto">
-      <div class="sticky top-0 z-10 bg-slate-900 text-white p-4 flex justify-between items-center">
-        <div>
-          <h2 class="text-xl font-black">⚙ 店舗設定</h2>
-          <p class="text-[11px] text-slate-400 mt-1">通常営業枠・特別営業日・臨時休業</p>
+  <!-- Settings Drawer -->
+  <section id="settings-drawer" class="hidden fixed inset-0 z-[250] drawer-bg">
+    <div class="absolute right-0 top-0 h-full w-full max-w-5xl bg-slate-100 shadow-2xl overflow-y-auto">
+      <div class="sticky top-0 z-10 bg-slate-900 text-white px-4 py-4">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-xl font-black">⚙ 店舗設定</h2>
+            <p class="text-xs text-slate-400 mt-1">通常営業枠・定休日・特別営業日を設定します。</p>
+          </div>
+          <button onclick="closeSettings()" class="w-10 h-10 rounded-full bg-white/10 text-white text-xl font-black">
+            ×
+          </button>
         </div>
-
-        <button onclick="closeSettings()" class="w-10 h-10 rounded-full bg-white/10 font-black text-xl">
-          ×
-        </button>
       </div>
 
-      <div class="p-4 space-y-4">
+      <div class="p-4 space-y-5">
 
-        <!-- Normal Business Shifts -->
-        <section class="panel p-4">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <!-- Business shifts -->
+        <section class="panel p-5">
+          <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 class="text-lg font-black">通常営業枠・定休日</h3>
-              <p class="text-xs text-slate-400 mt-1">曜日ごとの昼営業・夜営業を設定します。</p>
+              <p class="text-xs text-slate-400 mt-1">毎週の定休日・昼営業・夜営業を設定します。</p>
             </div>
 
-            <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-black">
-              <label class="cursor-pointer">
-                <input type="radio" name="business-mode" value="night" class="hidden" onchange="setBusinessMode('night')">
-                <span id="mode-night-label" class="block px-3 py-2 rounded-lg bg-slate-900 text-white">夜のみ</span>
-              </label>
-              <label class="cursor-pointer">
-                <input type="radio" name="business-mode" value="two" class="hidden" onchange="setBusinessMode('two')">
-                <span id="mode-two-label" class="block px-3 py-2 rounded-lg text-slate-600">昼・夜2部制</span>
-              </label>
+            <div class="min-w-[180px]">
+              <label class="mini-label">営業モード</label>
+              <select id="business-mode" class="input" onchange="renderBusinessShifts()">
+                <option value="night">夜のみ</option>
+                <option value="two">昼・夜の2部制</option>
+              </select>
             </div>
           </div>
 
-          <div id="business-shift-editor" class="mt-4 space-y-3">
-            <p class="text-sm text-slate-400">読み込み中...</p>
+          <div id="business-shifts-list" class="space-y-4 mt-5">
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center text-slate-400">読み込み中...</div>
           </div>
 
-          <button onclick="saveBusinessShifts()" class="btn w-full bg-slate-900 text-white mt-4">
+          <button onclick="saveBusinessShifts()" class="btn w-full bg-slate-900 text-white mt-5">
             通常営業枠を保存
           </button>
+
+          <p id="business-shifts-result" class="text-sm text-slate-500 mt-3 text-center"></p>
         </section>
 
-        <!-- Special Day Shifts -->
-        <section class="panel p-4">
-          <div>
-            <h3 class="text-lg font-black">直近3か月の休業日・特別営業日</h3>
-            <p class="text-xs text-slate-400 mt-1">
-              その日だけ「終日休業 / 昼だけ / 夜だけ / 両方営業」にできます。
-            </p>
-          </div>
+        <!-- Special days -->
+        <section class="panel p-5">
+          <h3 class="text-lg font-black">直近3か月の休業日・特別営業日</h3>
+          <p class="text-xs text-slate-400 mt-1">年末年始・臨時休業・特別営業を設定します。</p>
 
-          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
             <div>
               <label class="mini-label">対象日</label>
-              <input id="special-target-date" type="date" class="input" onchange="loadSpecialDayIntoFormByDate()" />
+              <input id="special-target-date" type="date" class="input" />
             </div>
 
             <div>
-              <label class="mini-label">設定タイプ</label>
+              <label class="mini-label">設定</label>
               <select id="special-mode" class="input" onchange="renderSpecialShiftFields()">
                 <option value="closed">終日休業</option>
                 <option value="lunch">昼だけ営業</option>
@@ -303,45 +307,59 @@
                 <option value="both">昼・夜 両方営業</option>
               </select>
             </div>
+
+            <div>
+              <label class="mini-label">メモ</label>
+              <input id="special-note" class="input" placeholder="例：年末年始休業 / 貸切営業" />
+            </div>
           </div>
 
-          <div class="mt-3">
-            <label class="mini-label">メモ</label>
-            <input id="special-note" class="input" placeholder="例：年末年始休み / 祝日ランチ営業 / 大晦日短縮営業" />
-          </div>
+          <div id="special-shift-fields" class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5"></div>
 
-          <div id="special-shift-fields" class="mt-4 space-y-3"></div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-4">
-            <button onclick="saveSpecialDayShifts()" class="btn bg-amber-600 text-white md:col-span-2">
-              特別日設定を保存
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-5">
+            <button onclick="saveSpecialDay()" class="btn bg-amber-600 text-white">
+              特別日を保存
             </button>
-            <button onclick="clearSpecialDayForm()" class="btn bg-slate-100 text-slate-700 border border-slate-200">
+            <button onclick="clearSpecialForm()" class="btn bg-slate-100 text-slate-700">
               入力クリア
             </button>
+            <button onclick="deleteSpecialDayFromForm()" class="btn bg-red-50 text-red-600 border border-red-200">
+              この日を削除
+            </button>
           </div>
 
+          <p id="special-result" class="text-sm text-slate-500 mt-3 text-center"></p>
+
           <div class="mt-6">
-            <div class="flex items-center justify-between gap-2">
-              <h4 class="font-black text-slate-800">登録済みの特別日</h4>
-              <button onclick="loadSpecialDayShifts()" class="text-xs font-black text-blue-600 bg-blue-50 border border-blue-200 px-3 py-2 rounded-xl">
+            <div class="flex items-center justify-between gap-3">
+              <h4 class="font-black">設定済み一覧</h4>
+              <button onclick="loadSpecialDaySettings()" class="text-xs font-black text-blue-600 bg-blue-50 border border-blue-200 px-3 py-2 rounded-xl">
                 更新
               </button>
             </div>
 
-            <div id="special-day-list" class="mt-3 space-y-2">
-              <p class="text-sm text-slate-400">読み込み中...</p>
+            <div id="special-days-list" class="space-y-3 mt-3">
+              <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center text-slate-400">読み込み中...</div>
             </div>
           </div>
         </section>
+
       </div>
-    </aside>
-  </div>
+    </div>
+  </section>
 
   <script>
     const ADMIN_TOKEN_KEY = "iz_demo_admin_token";
 
-    const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+    const WEEKDAYS = [
+      { dow: 0, label: "日曜" },
+      { dow: 1, label: "月曜" },
+      { dow: 2, label: "火曜" },
+      { dow: 3, label: "水曜" },
+      { dow: 4, label: "木曜" },
+      { dow: 5, label: "金曜" },
+      { dow: 6, label: "土曜" },
+    ];
 
     const STATUS_LABELS = {
       pending: "仮予約",
@@ -349,7 +367,7 @@
       cancelled_customer: "顧客キャンセル",
       cancelled_shop: "店舗キャンセル",
       completed: "来店済み",
-      no_show: "無断キャンセル"
+      no_show: "無断キャンセル",
     };
 
     const CUSTOMER_STATUS_LABELS = {
@@ -357,21 +375,14 @@
       regular: "常連",
       vip: "VIP",
       caution: "注意",
-      blocked: "ブロック"
+      blocked: "ブロック",
     };
 
     const SEAT_LABELS = {
       any: "指定なし",
       counter: "カウンター",
       table: "テーブル",
-      private_room: "個室"
-    };
-
-    const SHOP_STATUS_LABELS = {
-      open: "空席あり",
-      few: "残りわずか",
-      full: "満席",
-      closed: "受付停止"
+      private_room: "個室",
     };
 
     const NOTIFY_TYPE_LABELS = {
@@ -383,60 +394,25 @@
       reservation_cancelled_customer_admin: "顧客キャンセル・管理者",
       reservation_changed_customer: "予約変更・お客様",
       reservation_changed_admin: "予約変更・管理者",
-      reservation_reminder_customer: "前日リマインド"
-    };
-
-    const SHIFT_DEFS = {
-      lunch: {
-        code: "lunch",
-        label: "昼営業",
-        openTime: "11:30",
-        closeTime: "14:30",
-        lastOrderTime: "14:00",
-        interval: 30,
-        guests: 12,
-        groups: 5,
-        sortOrder: 10
-      },
-      dinner: {
-        code: "dinner",
-        label: "夜営業",
-        openTime: "17:00",
-        closeTime: "23:00",
-        lastOrderTime: "22:30",
-        interval: 30,
-        guests: 20,
-        groups: 8,
-        sortOrder: 20
-      }
+      reservation_reminder_customer: "前日リマインド",
     };
 
     let adminToken = "";
-    let currentDate = getTodayDateString();
-    let reservationFilter = "active";
-
     let reservations = [];
     let businessShifts = [];
-    let businessMode = "night";
-
     let specialDays = [];
     let specialDayShifts = [];
 
     window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("admin-date").value = currentDate;
-      document.getElementById("reminder-target-date").value = addDays(getTodayDateString(), 1);
+      document.getElementById("admin-date").value = getTodayDateString();
+      document.getElementById("reminder-target-date").value = addDaysToDateString(getTodayDateString(), 1);
       document.getElementById("special-target-date").value = getTodayDateString();
-      document.getElementById("special-target-date").min = getTodayDateString();
-      document.getElementById("special-target-date").max = addMonthsToDateString(getTodayDateString(), 3);
-
-      renderSpecialShiftFields();
 
       const savedToken = localStorage.getItem(ADMIN_TOKEN_KEY);
 
       if (savedToken) {
         adminToken = savedToken;
         showApp();
-        loadAll();
       }
     });
 
@@ -444,15 +420,13 @@
       const token = document.getElementById("admin-token-input").value.trim();
 
       if (!token) {
-        alert("管理トークンを入力してください。");
+        document.getElementById("login-error").innerText = "管理者トークンを入力してください。";
         return;
       }
 
       adminToken = token;
       localStorage.setItem(ADMIN_TOKEN_KEY, token);
-
       showApp();
-      loadAll();
     }
 
     function logoutAdmin() {
@@ -462,19 +436,9 @@
     }
 
     function showApp() {
-      document.getElementById("login-view").classList.add("hidden");
-      document.getElementById("app-view").classList.remove("hidden");
-    }
-
-    async function loadAll() {
-      await Promise.allSettled([
-        loadPublicStatus(),
-        loadBusinessShifts(),
-        loadSpecialDayShifts(),
-        loadNotificationSummary()
-      ]);
-
-      await loadAdminDay();
+      document.getElementById("login-section").classList.add("hidden");
+      document.getElementById("app-section").classList.remove("hidden");
+      loadDashboard();
     }
 
     async function adminFetch(path, options = {}) {
@@ -483,65 +447,145 @@
         headers: {
           "Content-Type": "application/json",
           "X-Admin-Token": adminToken,
-          ...(options.headers || {})
-        }
+          ...(options.headers || {}),
+        },
+        body: options.body && typeof options.body !== "string"
+          ? JSON.stringify(options.body)
+          : options.body,
       });
 
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data || data.ok === false) {
-        throw new Error(data?.error || `APIエラー: ${res.status}`);
+        const error = new Error(data?.error || `APIエラー: ${res.status}`);
+        error.status = res.status;
+        error.data = data;
+        throw error;
       }
 
       return data;
     }
 
-    async function publicFetch(path) {
-      const res = await fetch(path);
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok || !data || data.ok === false) {
-        throw new Error(data?.error || `APIエラー: ${res.status}`);
-      }
-
-      return data;
+    async function loadDashboard() {
+      await Promise.allSettled([
+        loadPublicStatus(),
+        loadNotificationSummary(),
+        loadAdminDay(),
+      ]);
     }
 
     async function loadPublicStatus() {
       try {
-        const data = await publicFetch("/api/public/status");
-        const status = data.status?.status || "open";
-        const message = data.status?.message || SHOP_STATUS_LABELS[status] || status;
+        const data = await fetch("/api/public/status").then((res) => res.json());
+        const status = data.status || {};
 
-        document.getElementById("current-shop-status").innerText = `現在: ${message}`;
-        document.getElementById("shop-status-select").value = status;
-        document.getElementById("shop-status-message").value = message;
+        document.getElementById("shop-status-message").value = status.message || "";
+        document.getElementById("shop-status-current").innerText =
+          `現在：${status.message || status.status || "未設定"}`;
+
       } catch (err) {
         console.error(err);
-        document.getElementById("current-shop-status").innerText = "現在: 取得失敗";
+        document.getElementById("shop-status-current").innerText = "店舗ステータスを取得できませんでした。";
       }
     }
 
-    async function saveShopStatus() {
+    function quickShopStatus(status, message) {
+      document.getElementById("shop-status-message").value = message;
+      saveShopStatus(status);
+    }
+
+    async function saveShopStatus(statusOverride = null) {
       try {
-        const status = document.getElementById("shop-status-select").value;
-        const message = document.getElementById("shop-status-message").value.trim();
+        const message = document.getElementById("shop-status-message").value.trim() || "空席あり";
+        const status = statusOverride || inferShopStatus(message);
 
         const data = await adminFetch("/api/admin/shop-status", {
           method: "POST",
-          body: JSON.stringify({
+          body: {
             status,
             message,
-            actorId: "admin_dashboard"
-          })
+            actorId: "admin_dashboard",
+          },
         });
 
-        showToast(data.result?.message || "店舗ステータスを保存しました。");
-        await loadPublicStatus();
+        showToast("店舗ステータスを保存しました。");
+        document.getElementById("shop-status-current").innerText =
+          data.result?.message || `現在：${message}`;
 
       } catch (err) {
-        alert("保存できませんでした。\n" + err.message);
+        alert("店舗ステータスを保存できませんでした。\n" + err.message);
       }
+    }
+
+    function inferShopStatus(message) {
+      if (message.includes("満席")) return "full";
+      if (message.includes("わずか")) return "few";
+      if (message.includes("終了") || message.includes("休")) return "closed";
+      return "open";
+    }
+
+    async function loadNotificationSummary() {
+      try {
+        const data = await adminFetch("/api/admin/notifications/summary");
+
+        const summary = data.summary || {};
+        const queuedCount = summary.queuedCount || 0;
+        const failedCount = summary.failedCount || 0;
+
+        document.getElementById("queued-count").innerText = queuedCount;
+        document.getElementById("failed-count").innerText = failedCount;
+
+        const byType = summary.queuedByType || {};
+        const typeLines = Object.entries(byType).map(([type, count]) => {
+          return `${NOTIFY_TYPE_LABELS[type] || type}：${count}件`;
+        });
+
+        document.getElementById("notification-type-summary").innerText =
+          typeLines.length ? typeLines.join(" / ") : "送信待ち通知はありません。";
+
+        const button = document.getElementById("btn-send-notifications");
+
+        if (queuedCount <= 0) {
+          button.disabled = true;
+          button.className = "btn w-full bg-slate-300 text-white mt-4";
+        } else {
+          button.disabled = false;
+          button.className = "btn w-full bg-blue-600 text-white mt-4";
+        }
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById("notification-type-summary").innerText =
+          "通知件数を取得できませんでした。";
+      }
+    }
+
+    async function sendNotifications() {
+      try {
+        document.getElementById("notification-result").innerText = "LINE通知を送信しています...";
+
+        const data = await adminFetch("/api/admin/notifications/send", {
+          method: "POST",
+          body: {
+            limit: 20,
+          },
+        });
+
+        const summary = data.summary || {};
+
+        document.getElementById("notification-result").innerText =
+          `送信 ${summary.sent || 0}件 / 失敗 ${summary.failed || 0}件 / スキップ ${summary.skipped || 0}件`;
+
+        await loadNotificationSummary();
+
+      } catch (err) {
+        document.getElementById("notification-result").innerText =
+          "通知送信に失敗しました。" + err.message;
+      }
+    }
+
+    function setReminderTomorrow() {
+      document.getElementById("reminder-target-date").value = addDaysToDateString(getTodayDateString(), 1);
     }
 
     async function enqueueReminders() {
@@ -550,270 +594,194 @@
 
         const data = await adminFetch("/api/admin/reminders/enqueue", {
           method: "POST",
-          body: JSON.stringify({
+          body: {
             targetDate,
-            actorId: "admin_dashboard"
-          })
+            actorId: "admin_dashboard",
+          },
         });
 
-        const result = data.result || {};
         document.getElementById("reminder-result").innerText =
-          result.message || `作成: ${result.inserted_count || 0}件`;
+          data.result?.message || "前日リマインドを作成しました。";
 
-        showToast("リマインド通知キューを作成しました。");
         await loadNotificationSummary();
 
       } catch (err) {
-        alert("リマインド作成に失敗しました。\n" + err.message);
+        document.getElementById("reminder-result").innerText =
+          "前日リマインドを作成できませんでした。" + err.message;
       }
-    }
-
-    function setTomorrowReminderDate() {
-      document.getElementById("reminder-target-date").value = addDays(getTodayDateString(), 1);
-    }
-
-    async function loadNotificationSummary() {
-      try {
-        const data = await adminFetch("/api/admin/notifications/summary");
-        const summary = data.summary || {};
-
-        const queuedCount = Number(summary.queuedCount || 0);
-        const failedCount = Number(summary.failedCount || 0);
-
-        document.getElementById("notification-queued-count").innerText = String(queuedCount);
-        document.getElementById("notification-failed-count").innerText = `失敗通知：${failedCount}件`;
-
-        document.getElementById("notification-type-summary").innerText =
-          formatNotifyTypeSummary(summary.queuedByType || {});
-
-        const button = document.getElementById("btn-send-notifications");
-
-        if (queuedCount > 0) {
-          button.disabled = false;
-          button.innerText = "LINE通知を送信";
-          button.className = "btn w-full bg-emerald-600 text-white mt-3";
-        } else {
-          button.disabled = true;
-          button.innerText = "送信待ちなし";
-          button.className = "btn w-full bg-slate-200 text-slate-400 mt-3 cursor-not-allowed";
-        }
-
-      } catch (err) {
-        console.error(err);
-
-        document.getElementById("notification-queued-count").innerText = "-";
-        document.getElementById("notification-failed-count").innerText = "失敗通知：取得失敗";
-        document.getElementById("notification-type-summary").innerText =
-          `通知件数を取得できませんでした。${err.message}`;
-
-        const button = document.getElementById("btn-send-notifications");
-        button.disabled = true;
-        button.innerText = "通知件数取得失敗";
-        button.className = "btn w-full bg-slate-200 text-slate-400 mt-3 cursor-not-allowed";
-      }
-    }
-
-    function formatNotifyTypeSummary(typeMap) {
-      const entries = Object.entries(typeMap || {});
-
-      if (!entries.length) {
-        return "内訳：送信待ち通知はありません。";
-      }
-
-      return "内訳：" + entries.map(([type, count]) => {
-        return `${NOTIFY_TYPE_LABELS[type] || type} ${count}件`;
-      }).join(" / ");
-    }
-
-    async function sendNotifications() {
-      const button = document.getElementById("btn-send-notifications");
-
-      try {
-        button.disabled = true;
-        button.innerText = "送信中...";
-        button.className = "btn w-full bg-slate-700 text-white mt-3";
-
-        const data = await adminFetch("/api/admin/notifications/send", {
-          method: "POST",
-          body: JSON.stringify({
-            limit: 20
-          })
-        });
-
-        const summary = data.summary || {};
-        document.getElementById("notification-result").innerText =
-          `送信処理完了：合計 ${summary.total || 0} / 送信 ${summary.sent || 0} / 失敗 ${summary.failed || 0} / スキップ ${summary.skipped || 0}`;
-
-        showToast("通知送信処理が完了しました。");
-        await loadNotificationSummary();
-
-      } catch (err) {
-        alert("通知送信に失敗しました。\n" + err.message);
-        await loadNotificationSummary();
-      }
-    }
-
-    function changeAdminDate() {
-      currentDate = document.getElementById("admin-date").value || getTodayDateString();
-      loadAdminDay();
-    }
-
-    function moveDate(days) {
-      currentDate = addDays(currentDate, days);
-      document.getElementById("admin-date").value = currentDate;
-      loadAdminDay();
-    }
-
-    function setReservationFilter(filter) {
-      reservationFilter = filter;
-
-      document.querySelectorAll(".filter-btn").forEach((button) => {
-        button.className = "filter-btn bg-white border border-slate-200 text-slate-600 px-3 py-2 rounded-xl";
-      });
-
-      const activeButton = document.getElementById(`filter-${filter}`);
-      if (activeButton) {
-        activeButton.className = "filter-btn bg-slate-900 text-white px-3 py-2 rounded-xl";
-      }
-
-      renderReservations();
     }
 
     async function loadAdminDay() {
+      const date = document.getElementById("admin-date").value;
+
+      if (!date) return;
+
       const list = document.getElementById("reservation-list");
-      list.innerHTML = `<div class="panel p-8 text-center text-slate-400">読み込み中...</div>`;
+      list.innerHTML = `<div class="panel p-5 text-center text-slate-400 font-bold">読み込み中...</div>`;
 
       try {
-        const data = await adminFetch(`/api/admin/day?date=${encodeURIComponent(currentDate)}`);
+        const data = await adminFetch(`/api/admin/day?date=${encodeURIComponent(date)}`);
+
         reservations = data.reservations || [];
 
-        const summary = data.summary || {};
-        document.getElementById("day-summary").innerText =
-          `${currentDate} / 有効予約 ${summary.count || 0}件 / ${summary.guests || 0}名 / 仮予約 ${summary.pending || 0} / 確定 ${summary.confirmed || 0}`;
-
+        renderDaySummary(data.summary || {});
         renderReservations();
 
       } catch (err) {
-        console.error(err);
         list.innerHTML = `
-          <div class="panel p-8 text-center text-red-500">
+          <div class="panel p-5 text-center text-red-600 font-bold">
             予約一覧を取得できませんでした。<br>${escapeHtml(err.message)}
           </div>
         `;
       }
     }
 
+    function renderDaySummary(summary) {
+      const box = document.getElementById("day-summary");
+
+      box.innerHTML = `
+        <div class="bg-white border border-slate-200 rounded-2xl p-4">
+          <p class="text-xs font-black text-slate-400">有効予約</p>
+          <p class="text-3xl font-black">${summary.count || 0}</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4">
+          <p class="text-xs font-black text-slate-400">人数</p>
+          <p class="text-3xl font-black">${summary.guests || 0}</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4">
+          <p class="text-xs font-black text-slate-400">仮予約</p>
+          <p class="text-3xl font-black text-amber-600">${summary.pending || 0}</p>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl p-4">
+          <p class="text-xs font-black text-slate-400">確定</p>
+          <p class="text-3xl font-black text-emerald-600">${summary.confirmed || 0}</p>
+        </div>
+      `;
+    }
+
     function renderReservations() {
       const list = document.getElementById("reservation-list");
 
-      let filtered = reservations;
-
-      if (reservationFilter === "active") {
-        filtered = reservations.filter((r) => ["pending", "confirmed"].includes(r.status));
-      } else if (reservationFilter !== "all") {
-        filtered = reservations.filter((r) => r.status === reservationFilter);
-      }
-
-      if (!filtered.length) {
+      if (!reservations.length) {
         list.innerHTML = `
-          <div class="panel p-8 text-center text-slate-400">
-            表示する予約はありません。
+          <div class="panel p-8 text-center text-slate-400 font-bold">
+            この日の予約はありません。
           </div>
         `;
         return;
       }
 
-      list.innerHTML = filtered.map(renderReservationCard).join("");
+      list.innerHTML = reservations.map(renderReservationCard).join("");
     }
 
     function renderReservationCard(res) {
+      const customer = getCustomer(res);
+      const displayName = getReservationDisplayName(res);
+      const lineName = res.line_name || "LINEユーザー";
       const statusLabel = STATUS_LABELS[res.status] || res.status;
       const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
-      const customer = Array.isArray(res.customer) ? res.customer[0] : res.customer;
-      const customerStatus = customer?.status || "new";
-      const customerMemo = customer?.memo || "";
-
-      const shiftLabel = getReservationShiftLabel(res);
-      const shiftCode = getReservationShiftCode(res);
-      const isSpecialDay = !!res.is_special_day;
+      const shiftLabel = res.shift_label || "営業枠";
+      const isInactive = !["pending", "confirmed"].includes(res.status);
 
       return `
-        <article class="panel p-4">
-          <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-            <div class="flex-1">
+        <article class="panel p-5 ${isInactive ? "opacity-60" : ""}">
+          <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
-                <span class="text-xl font-black">${formatTime(res.reserve_time)}</span>
+                <p class="text-2xl font-black text-slate-900">
+                  ${escapeHtml(formatTime(res.reserve_time))}
+                </p>
 
-                <span class="${reservationStatusClass(res.status)} text-xs font-black px-2 py-1 rounded-full border">
-                  ${statusLabel}
+                <span class="${getStatusBadgeClass(res.status)}">
+                  ${escapeHtml(statusLabel)}
                 </span>
 
-                <span class="${shiftBadgeClass(shiftCode, isSpecialDay)} text-xs font-black px-2 py-1 rounded-full border">
+                <span class="badge ${res.is_special_day ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}">
                   ${escapeHtml(shiftLabel)}
                 </span>
 
-                ${isSpecialDay ? `
-                  <span class="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-black px-2 py-1 rounded-full">
-                    特別日
-                  </span>
+                ${res.is_special_day ? `
+                  <span class="badge bg-amber-100 text-amber-700">特別日</span>
                 ` : ""}
               </div>
 
-              <div class="mt-2">
-                <p class="font-black text-slate-800">${escapeHtml(res.line_name || "LINEユーザー")} 様</p>
-                <p class="text-sm text-slate-500 mt-1">
-                  👤 ${Number(res.party_size || 0)}名 / 🪑 ${escapeHtml(seatLabel)}
+              <div class="mt-3">
+                <p class="text-xl font-black text-slate-900">
+                  ${escapeHtml(displayName)} 様
                 </p>
+
+                <p class="text-sm text-slate-500 mt-1">
+                  ${Number(res.party_size || 0)}名 / ${escapeHtml(seatLabel)}
+                </p>
+
+                ${lineName && lineName !== displayName ? `
+                  <p class="text-xs text-slate-400 mt-1">
+                    LINE名：${escapeHtml(lineName)}
+                  </p>
+                ` : ""}
+
                 <p class="text-xs text-slate-400 mt-1">
-                  LINE: ${escapeHtml(res.line_user_id || "")}
+                  LINEユーザーID：${escapeHtml(shortUserId(res.line_user_id))}
                 </p>
               </div>
 
-              ${res.preferences && res.preferences.length ? `
-                <p class="text-xs text-slate-500 mt-2">
-                  好み: ${escapeHtml(res.preferences.join(" / "))}
-                </p>
-              ` : ""}
-
               ${res.customer_note ? `
-                <p class="text-sm bg-slate-50 border border-slate-100 rounded-xl p-3 mt-3">
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-sm text-slate-600 mt-3">
                   ${escapeHtml(res.customer_note)}
-                </p>
+                </div>
               ` : ""}
 
-              ${res.cancel_reason ? `
-                <p class="text-xs text-red-500 mt-2">
-                  キャンセル理由: ${escapeHtml(res.cancel_reason)}
-                </p>
+              ${Array.isArray(res.preferences) && res.preferences.length ? `
+                <div class="flex flex-wrap gap-1 mt-3">
+                  ${res.preferences.map((item) => `
+                    <span class="badge bg-slate-100 text-slate-600">${escapeHtml(item)}</span>
+                  `).join("")}
+                </div>
               ` : ""}
             </div>
 
-            <div class="lg:w-80 space-y-3">
-              <div class="grid grid-cols-2 gap-2 text-xs">
-                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'confirmed')" class="btn bg-emerald-600 text-white py-2">確定</button>
-                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'cancelled_shop')" class="btn bg-red-600 text-white py-2">店舗取消</button>
-                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'completed')" class="btn bg-slate-900 text-white py-2">来店済み</button>
-                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'no_show')" class="btn bg-slate-500 text-white py-2">無断取消</button>
+            <div class="lg:w-[420px] space-y-3">
+              <div class="grid grid-cols-2 gap-2">
+                ${renderStatusButton(res, "confirmed", "確定", "bg-emerald-600 text-white")}
+                ${renderStatusButton(res, "pending", "仮予約", "bg-amber-500 text-white")}
+                ${renderStatusButton(res, "completed", "来店済み", "bg-blue-600 text-white")}
+                ${renderStatusButton(res, "no_show", "無断キャンセル", "bg-red-600 text-white")}
+                ${renderStatusButton(res, "cancelled_shop", "店舗キャンセル", "bg-slate-700 text-white")}
+                <button onclick="copyReservationName('${escapeJs(displayName)}')" class="btn bg-white border border-slate-200 text-slate-700 text-sm">
+                  名前コピー
+                </button>
               </div>
 
-              <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                <p class="text-xs font-black text-slate-500 mb-2">顧客管理</p>
-
-                <div class="grid grid-cols-2 gap-2">
-                  <select id="customer-status-${escapeAttr(res.id)}" class="input text-xs">
-                    ${Object.entries(CUSTOMER_STATUS_LABELS).map(([key, label]) => `
-                      <option value="${key}" ${key === customerStatus ? "selected" : ""}>${label}</option>
-                    `).join("")}
-                  </select>
-
-                  <button onclick="copyName('${escapeJs(res.line_name || '')}')" class="btn bg-white border border-slate-200 text-slate-700 py-2 text-xs">
-                    名前コピー
-                  </button>
+              <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="font-black text-sm">顧客管理</p>
+                  <p class="text-[11px] text-slate-400">
+                    来店 ${customer.visit_count || 0} / 無断 ${customer.no_show_count || 0}
+                  </p>
                 </div>
 
-                <textarea id="customer-memo-${escapeAttr(res.id)}" class="input text-xs mt-2" rows="2" placeholder="顧客メモ">${escapeHtml(customerMemo)}</textarea>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                  <div>
+                    <label class="mini-label">ステータス</label>
+                    <select id="customer-status-${res.id}" class="small-input">
+                      ${Object.entries(CUSTOMER_STATUS_LABELS).map(([value, label]) => `
+                        <option value="${value}" ${customer.status === value ? "selected" : ""}>${label}</option>
+                      `).join("")}
+                    </select>
+                  </div>
 
-                <button onclick="saveCustomer('${escapeJs(res.id)}', '${escapeJs(res.line_user_id)}')" class="btn w-full bg-blue-600 text-white py-2 text-xs mt-2">
+                  <div>
+                    <label class="mini-label">予約名</label>
+                    <input class="small-input bg-slate-100" value="${escapeHtml(displayName)}" readonly />
+                  </div>
+                </div>
+
+                <div class="mt-2">
+                  <label class="mini-label">顧客メモ</label>
+                  <textarea id="customer-memo-${res.id}" class="small-input" rows="2" placeholder="例：奥席希望 / 要注意 / 常連">${escapeHtml(customer.memo || "")}</textarea>
+                </div>
+
+                <button onclick="saveCustomer('${escapeJs(res.id)}','${escapeJs(res.line_user_id)}')" class="btn w-full bg-slate-900 text-white text-sm mt-3">
                   顧客情報を保存
                 </button>
               </div>
@@ -823,85 +791,53 @@
       `;
     }
 
-    function getReservationShiftLabel(res) {
-      if (res.shift_label) {
-        return res.shift_label;
-      }
+    function renderStatusButton(res, status, label, className) {
+      const disabled = res.status === status;
 
-      return detectShiftLabel(res.reserve_date, res.reserve_time);
-    }
-
-    function getReservationShiftCode(res) {
-      if (res.shift_code) {
-        return res.shift_code;
-      }
-
-      const label = detectShiftLabel(res.reserve_date, res.reserve_time);
-
-      if (label.includes("昼")) return "lunch";
-      if (label.includes("夜")) return "dinner";
-      if (label.includes("特別")) return "special";
-      return "regular";
-    }
-
-    function shiftBadgeClass(shiftCode, isSpecialDay) {
-      if (isSpecialDay && shiftCode === "lunch") {
-        return "bg-amber-50 text-amber-700 border-amber-200";
-      }
-
-      if (isSpecialDay && shiftCode === "dinner") {
-        return "bg-orange-50 text-orange-700 border-orange-200";
-      }
-
-      if (isSpecialDay || shiftCode === "special") {
-        return "bg-purple-50 text-purple-700 border-purple-200";
-      }
-
-      if (shiftCode === "lunch") {
-        return "bg-sky-50 text-sky-700 border-sky-200";
-      }
-
-      if (shiftCode === "dinner") {
-        return "bg-indigo-50 text-indigo-700 border-indigo-200";
-      }
-
-      return "bg-slate-100 text-slate-600 border-slate-200";
-    }
-
-    function reservationStatusClass(status) {
-      if (status === "confirmed") return "bg-emerald-100 text-emerald-700 border-emerald-200";
-      if (status === "pending") return "bg-amber-100 text-amber-700 border-amber-200";
-      if (status === "cancelled_customer" || status === "cancelled_shop") return "bg-red-100 text-red-700 border-red-200";
-      if (status === "completed") return "bg-blue-100 text-blue-700 border-blue-200";
-      return "bg-slate-100 text-slate-600 border-slate-200";
+      return `
+        <button
+          onclick="changeReservationStatus('${escapeJs(res.id)}','${status}')"
+          class="btn ${disabled ? "bg-slate-200 text-slate-400" : className} text-sm"
+          ${disabled ? "disabled" : ""}
+        >
+          ${label}
+        </button>
+      `;
     }
 
     async function changeReservationStatus(reservationId, status) {
-      const reason = status.includes("cancelled") || status === "no_show"
-        ? prompt("理由を入力してください。", status === "no_show" ? "無断キャンセル" : "店舗都合")
-        : null;
+      let reason = null;
 
-      if (reason === null && (status.includes("cancelled") || status === "no_show")) {
-        return;
+      if (status === "cancelled_shop") {
+        reason = prompt("店舗キャンセル理由を入力してください。", "店舗都合");
+        if (reason === null) return;
+      }
+
+      if (status === "no_show") {
+        reason = prompt("無断キャンセル理由・メモを入力してください。", "無断キャンセル");
+        if (reason === null) return;
       }
 
       try {
-        const data = await adminFetch("/api/admin/reservations/status", {
+        await adminFetch("/api/admin/reservations/status", {
           method: "POST",
-          body: JSON.stringify({
+          body: {
             reservationId,
             status,
             reason,
-            actorId: "admin_dashboard"
-          })
+            actorId: "admin_dashboard",
+          },
         });
 
-        showToast(data.result?.message || "予約ステータスを更新しました。");
-        await loadAdminDay();
-        await loadNotificationSummary();
+        showToast("予約ステータスを更新しました。");
+
+        await Promise.allSettled([
+          loadAdminDay(),
+          loadNotificationSummary(),
+        ]);
 
       } catch (err) {
-        alert("予約ステータスを変更できませんでした。\n" + err.message);
+        alert("ステータス更新に失敗しました。\n" + err.message);
       }
     }
 
@@ -910,17 +846,18 @@
         const status = document.getElementById(`customer-status-${reservationId}`).value;
         const memo = document.getElementById(`customer-memo-${reservationId}`).value;
 
-        const data = await adminFetch("/api/admin/customer", {
+        await adminFetch("/api/admin/customer", {
           method: "POST",
-          body: JSON.stringify({
+          body: {
             lineUserId,
             status,
             memo,
-            actorId: "admin_dashboard"
-          })
+            actorId: "admin_dashboard",
+          },
         });
 
-        showToast(data.result?.message || "顧客情報を保存しました。");
+        showToast("顧客情報を保存しました。");
+
         await loadAdminDay();
 
       } catch (err) {
@@ -928,36 +865,62 @@
       }
     }
 
-    async function copyName(name) {
-      try {
-        await navigator.clipboard.writeText(name || "");
-        showToast("名前をコピーしました。");
-      } catch {
-        alert("コピーできませんでした。");
-      }
+    function getReservationDisplayName(res) {
+      return res.reservation_name || res.line_name || "お客様";
     }
 
-    function openSettings() {
-      document.getElementById("settings-overlay").classList.remove("hidden");
-      requestAnimationFrame(() => {
-        document.getElementById("settings-drawer").classList.add("open");
-      });
+    function getCustomer(res) {
+      if (Array.isArray(res.customer)) {
+        return res.customer[0] || {};
+      }
 
-      loadBusinessShifts();
-      loadSpecialDayShifts();
+      return res.customer || {};
+    }
+
+    function getStatusBadgeClass(status) {
+      if (status === "confirmed") return "badge bg-emerald-100 text-emerald-700";
+      if (status === "pending") return "badge bg-amber-100 text-amber-700";
+      if (status === "completed") return "badge bg-blue-100 text-blue-700";
+      if (status === "no_show") return "badge bg-red-100 text-red-700";
+      return "badge bg-slate-100 text-slate-600";
+    }
+
+    function copyReservationName(name) {
+      navigator.clipboard.writeText(name).then(() => {
+        showToast(`予約名をコピーしました：${name}`);
+      }).catch(() => {
+        prompt("コピーしてください", name);
+      });
+    }
+
+    function moveDate(days) {
+      const input = document.getElementById("admin-date");
+      input.value = addDaysToDateString(input.value || getTodayDateString(), days);
+      loadAdminDay();
+    }
+
+    function setToday() {
+      document.getElementById("admin-date").value = getTodayDateString();
+      loadAdminDay();
+    }
+
+    // =========================================================
+    // Settings
+    // =========================================================
+
+    async function openSettings() {
+      document.getElementById("settings-drawer").classList.remove("hidden");
+
+      await Promise.allSettled([
+        loadBusinessShifts(),
+        loadSpecialDaySettings(),
+      ]);
+
+      renderSpecialShiftFields();
     }
 
     function closeSettings() {
-      document.getElementById("settings-drawer").classList.remove("open");
-      setTimeout(() => {
-        document.getElementById("settings-overlay").classList.add("hidden");
-      }, 250);
-    }
-
-    function closeSettingsByOverlay(event) {
-      if (event.target.id === "settings-overlay") {
-        closeSettings();
-      }
+      document.getElementById("settings-drawer").classList.add("hidden");
     }
 
     async function loadBusinessShifts() {
@@ -965,212 +928,203 @@
         const data = await adminFetch("/api/admin/business-shifts");
         businessShifts = data.businessShifts || [];
 
-        businessMode = businessShifts.some((s) => s.shift_code === "lunch" && s.is_enabled) ? "two" : "night";
+        const hasLunch = businessShifts.some((item) => item.shift_code === "lunch" && item.is_enabled);
+        document.getElementById("business-mode").value = hasLunch ? "two" : "night";
 
-        renderBusinessModeLabels();
-        renderBusinessShiftEditor();
+        renderBusinessShifts();
 
       } catch (err) {
-        console.error(err);
-        document.getElementById("business-shift-editor").innerHTML =
-          `<p class="text-sm text-red-500">通常営業枠を取得できませんでした。${escapeHtml(err.message)}</p>`;
+        document.getElementById("business-shifts-list").innerHTML = `
+          <div class="bg-red-50 border border-red-200 text-red-600 rounded-2xl p-5 text-center font-bold">
+            通常営業枠を取得できませんでした。<br>${escapeHtml(err.message)}
+          </div>
+        `;
       }
     }
 
-    function setBusinessMode(mode) {
-      businessMode = mode;
-      renderBusinessModeLabels();
-      renderBusinessShiftEditor();
-    }
+    function renderBusinessShifts() {
+      const mode = document.getElementById("business-mode").value;
+      const list = document.getElementById("business-shifts-list");
 
-    function renderBusinessModeLabels() {
-      const night = document.getElementById("mode-night-label");
-      const two = document.getElementById("mode-two-label");
-
-      if (!night || !two) return;
-
-      if (businessMode === "night") {
-        night.className = "block px-3 py-2 rounded-lg bg-slate-900 text-white";
-        two.className = "block px-3 py-2 rounded-lg text-slate-600";
-      } else {
-        night.className = "block px-3 py-2 rounded-lg text-slate-600";
-        two.className = "block px-3 py-2 rounded-lg bg-slate-900 text-white";
-      }
-    }
-
-    function getBusinessShift(dow, code) {
-      const found = businessShifts.find((s) => Number(s.dow) === dow && s.shift_code === code);
-      const def = SHIFT_DEFS[code];
-
-      return {
-        dow,
-        shift_code: code,
-        shift_label: found?.shift_label || def.label,
-        is_enabled: found ? !!found.is_enabled : code === "dinner",
-        open_time: formatTime(found?.open_time || def.openTime),
-        close_time: formatTime(found?.close_time || def.closeTime),
-        last_order_time: formatTime(found?.last_order_time || def.lastOrderTime),
-        slot_interval_minutes: Number(found?.slot_interval_minutes || def.interval),
-        max_guests_per_slot: Number(found?.max_guests_per_slot || def.guests),
-        max_groups_per_slot: Number(found?.max_groups_per_slot || def.groups),
-        sort_order: Number(found?.sort_order || def.sortOrder),
-        note: found?.note || ""
-      };
-    }
-
-    function renderBusinessShiftEditor() {
-      const container = document.getElementById("business-shift-editor");
-
-      container.innerHTML = WEEKDAYS.map((label, dow) => {
+      list.innerHTML = WEEKDAYS.map(({ dow, label }) => {
         const lunch = getBusinessShift(dow, "lunch");
         const dinner = getBusinessShift(dow, "dinner");
-
-        const closed = businessMode === "night"
-          ? !dinner.is_enabled
-          : (!lunch.is_enabled && !dinner.is_enabled);
+        const isClosed = !lunch.is_enabled && !dinner.is_enabled;
 
         return `
-          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
-            <div class="flex items-center justify-between gap-3 mb-3">
-              <div class="font-black">${label}曜日</div>
-              <label class="text-xs font-black text-slate-600 flex items-center gap-2">
-                <input id="biz-${dow}-closed" type="checkbox" ${closed ? "checked" : ""} onchange="toggleBusinessClosed(${dow})">
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p class="text-lg font-black">${label}</p>
+                <p class="text-xs text-slate-400">昼営業・夜営業をOFFにすると定休日になります。</p>
+              </div>
+
+              <label class="text-sm font-black bg-white border border-slate-200 rounded-xl px-3 py-2">
+                <input id="business-closed-${dow}" type="checkbox" ${isClosed ? "checked" : ""} onchange="toggleBusinessClosed(${dow})">
                 定休日
               </label>
             </div>
 
-            <div class="space-y-3">
-              ${businessMode === "two" ? renderBusinessShiftBlock(dow, lunch) : ""}
-              ${renderBusinessShiftBlock(dow, dinner)}
+            <div class="grid grid-cols-1 ${mode === "two" ? "lg:grid-cols-2" : ""} gap-3 mt-4">
+              ${mode === "two" ? renderBusinessShiftBlock(dow, "lunch", lunch, "昼営業") : ""}
+              ${renderBusinessShiftBlock(dow, "dinner", dinner, "夜営業")}
             </div>
           </div>
         `;
       }).join("");
+
+      for (const { dow } of WEEKDAYS) {
+        toggleBusinessClosed(dow, true);
+      }
     }
 
-    function renderBusinessShiftBlock(dow, shift) {
-      const code = shift.shift_code;
-      const def = SHIFT_DEFS[code];
-
+    function renderBusinessShiftBlock(dow, code, shift, label) {
       return `
-        <div class="bg-white border border-slate-200 rounded-xl p-3" data-biz-block="${dow}-${code}">
-          <label class="flex items-center gap-2 text-sm font-black mb-3">
-            <input id="biz-${dow}-${code}-enabled" type="checkbox" ${shift.is_enabled ? "checked" : ""}>
-            ${def.label}
+        <div class="bg-white border border-slate-200 rounded-2xl p-3">
+          <label class="text-sm font-black">
+            <input id="business-${dow}-${code}-enabled" type="checkbox" ${shift.is_enabled ? "checked" : ""}>
+            ${label}
           </label>
 
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div class="grid grid-cols-3 gap-2 mt-3">
             <div>
               <label class="mini-label">開始</label>
-              <input id="biz-${dow}-${code}-open" type="time" class="input" value="${shift.open_time}">
+              <input id="business-${dow}-${code}-open" type="time" class="small-input" value="${formatTime(shift.open_time)}">
             </div>
             <div>
               <label class="mini-label">終了</label>
-              <input id="biz-${dow}-${code}-close" type="time" class="input" value="${shift.close_time}">
+              <input id="business-${dow}-${code}-close" type="time" class="small-input" value="${formatTime(shift.close_time)}">
             </div>
             <div>
               <label class="mini-label">LO</label>
-              <input id="biz-${dow}-${code}-lo" type="time" class="input" value="${shift.last_order_time}">
+              <input id="business-${dow}-${code}-lo" type="time" class="small-input" value="${formatTime(shift.last_order_time)}">
             </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 mt-2">
             <div>
               <label class="mini-label">刻み</label>
-              <select id="biz-${dow}-${code}-interval" class="input">
-                <option value="15" ${shift.slot_interval_minutes === 15 ? "selected" : ""}>15分</option>
-                <option value="30" ${shift.slot_interval_minutes === 30 ? "selected" : ""}>30分</option>
-                <option value="60" ${shift.slot_interval_minutes === 60 ? "selected" : ""}>60分</option>
+              <select id="business-${dow}-${code}-interval" class="small-input">
+                <option value="15" ${Number(shift.slot_interval_minutes) === 15 ? "selected" : ""}>15分</option>
+                <option value="30" ${Number(shift.slot_interval_minutes) === 30 ? "selected" : ""}>30分</option>
+                <option value="60" ${Number(shift.slot_interval_minutes) === 60 ? "selected" : ""}>60分</option>
               </select>
             </div>
             <div>
               <label class="mini-label">最大人数</label>
-              <input id="biz-${dow}-${code}-guests" type="number" min="0" class="input" value="${shift.max_guests_per_slot}">
+              <input id="business-${dow}-${code}-guests" type="number" class="small-input" value="${Number(shift.max_guests_per_slot || defaultGuests(code))}">
             </div>
             <div>
               <label class="mini-label">最大組数</label>
-              <input id="biz-${dow}-${code}-groups" type="number" min="0" class="input" value="${shift.max_groups_per_slot}">
+              <input id="business-${dow}-${code}-groups" type="number" class="small-input" value="${Number(shift.max_groups_per_slot || defaultGroups(code))}">
             </div>
-            <div class="md:col-span-2">
-              <label class="mini-label">メモ</label>
-              <input id="biz-${dow}-${code}-note" class="input" value="${escapeAttr(shift.note)}">
-            </div>
+          </div>
+
+          <div class="mt-2">
+            <label class="mini-label">メモ</label>
+            <input id="business-${dow}-${code}-note" class="small-input" value="${escapeHtml(shift.note || "")}" placeholder="任意">
           </div>
         </div>
       `;
     }
 
-    function toggleBusinessClosed(dow) {
-      const closed = document.getElementById(`biz-${dow}-closed`).checked;
+    function toggleBusinessClosed(dow, silent = false) {
+      const closed = document.getElementById(`business-closed-${dow}`)?.checked;
 
       ["lunch", "dinner"].forEach((code) => {
-        const enabled = document.getElementById(`biz-${dow}-${code}-enabled`);
-        if (enabled) enabled.checked = !closed && (businessMode === "two" || code === "dinner");
+        const checkbox = document.getElementById(`business-${dow}-${code}-enabled`);
+        if (!checkbox) return;
+
+        if (closed) {
+          checkbox.checked = false;
+          checkbox.disabled = true;
+        } else {
+          checkbox.disabled = false;
+        }
       });
+    }
+
+    function getBusinessShift(dow, code) {
+      const found = businessShifts.find((item) => Number(item.dow) === dow && item.shift_code === code);
+
+      if (found) return found;
+
+      return {
+        dow,
+        shift_code: code,
+        shift_label: code === "lunch" ? "昼営業" : "夜営業",
+        is_enabled: code === "dinner",
+        open_time: code === "lunch" ? "11:30" : "17:00",
+        close_time: code === "lunch" ? "14:30" : "23:00",
+        last_order_time: code === "lunch" ? "14:00" : "22:30",
+        slot_interval_minutes: 30,
+        max_guests_per_slot: defaultGuests(code),
+        max_groups_per_slot: defaultGroups(code),
+        sort_order: code === "lunch" ? 10 : 20,
+        note: "",
+      };
     }
 
     async function saveBusinessShifts() {
       try {
+        const mode = document.getElementById("business-mode").value;
         const shifts = [];
 
-        for (let dow = 0; dow <= 6; dow++) {
-          const closed = document.getElementById(`biz-${dow}-closed`).checked;
+        for (const { dow } of WEEKDAYS) {
+          const closed = document.getElementById(`business-closed-${dow}`).checked;
 
           for (const code of ["lunch", "dinner"]) {
-            if (businessMode === "night" && code === "lunch") {
-              const def = SHIFT_DEFS.lunch;
-              shifts.push({
-                dow,
-                shiftCode: "lunch",
-                shiftLabel: def.label,
-                isEnabled: false,
-                openTime: def.openTime,
-                closeTime: def.closeTime,
-                lastOrderTime: def.lastOrderTime,
-                slotIntervalMinutes: def.interval,
-                maxGuestsPerSlot: def.guests,
-                maxGroupsPerSlot: def.groups,
-                sortOrder: def.sortOrder,
-                note: null
-              });
+            const useLunch = mode === "two";
+            const enabledEl = document.getElementById(`business-${dow}-${code}-enabled`);
+
+            if (code === "lunch" && !useLunch) {
+              shifts.push(buildBusinessShiftPayload(dow, code, false));
               continue;
             }
 
-            const def = SHIFT_DEFS[code];
-            const enabledEl = document.getElementById(`biz-${dow}-${code}-enabled`);
-
-            shifts.push({
-              dow,
-              shiftCode: code,
-              shiftLabel: def.label,
-              isEnabled: closed ? false : !!enabledEl?.checked,
-              openTime: document.getElementById(`biz-${dow}-${code}-open`)?.value || def.openTime,
-              closeTime: document.getElementById(`biz-${dow}-${code}-close`)?.value || def.closeTime,
-              lastOrderTime: document.getElementById(`biz-${dow}-${code}-lo`)?.value || def.lastOrderTime,
-              slotIntervalMinutes: Number(document.getElementById(`biz-${dow}-${code}-interval`)?.value || def.interval),
-              maxGuestsPerSlot: Number(document.getElementById(`biz-${dow}-${code}-guests`)?.value || def.guests),
-              maxGroupsPerSlot: Number(document.getElementById(`biz-${dow}-${code}-groups`)?.value || def.groups),
-              sortOrder: def.sortOrder,
-              note: document.getElementById(`biz-${dow}-${code}-note`)?.value || null
-            });
+            shifts.push(buildBusinessShiftPayload(dow, code, closed ? false : !!enabledEl?.checked));
           }
         }
 
         const data = await adminFetch("/api/admin/business-shifts/update", {
           method: "POST",
-          body: JSON.stringify({
+          body: {
             shifts,
-            actorId: "admin_dashboard"
-          })
+            actorId: "admin_dashboard",
+          },
         });
 
-        showToast(data.result?.message || "通常営業枠を保存しました。");
+        document.getElementById("business-shifts-result").innerText =
+          data.result?.message || "通常営業枠を保存しました。";
+
+        showToast("通常営業枠を保存しました。");
+
         await loadBusinessShifts();
-        await loadAdminDay();
 
       } catch (err) {
-        alert("通常営業枠を保存できませんでした。\n" + err.message);
+        document.getElementById("business-shifts-result").innerText =
+          "保存できませんでした。" + err.message;
       }
     }
 
-    async function loadSpecialDayShifts() {
+    function buildBusinessShiftPayload(dow, code, isEnabled) {
+      return {
+        dow,
+        shiftCode: code,
+        shiftLabel: code === "lunch" ? "昼営業" : "夜営業",
+        isEnabled,
+        openTime: getValue(`business-${dow}-${code}-open`) || (code === "lunch" ? "11:30" : "17:00"),
+        closeTime: getValue(`business-${dow}-${code}-close`) || (code === "lunch" ? "14:30" : "23:00"),
+        lastOrderTime: getValue(`business-${dow}-${code}-lo`) || (code === "lunch" ? "14:00" : "22:30"),
+        slotIntervalMinutes: Number(getValue(`business-${dow}-${code}-interval`) || 30),
+        maxGuestsPerSlot: Number(getValue(`business-${dow}-${code}-guests`) || defaultGuests(code)),
+        maxGroupsPerSlot: Number(getValue(`business-${dow}-${code}-groups`) || defaultGroups(code)),
+        sortOrder: code === "lunch" ? 10 : 20,
+        note: getValue(`business-${dow}-${code}-note`) || null,
+      };
+    }
+
+    async function loadSpecialDaySettings() {
       try {
         const today = getTodayDateString();
         const to = addMonthsToDateString(today, 3);
@@ -1180,23 +1134,24 @@
         specialDays = data.specialDays || [];
         specialDayShifts = data.specialDayShifts || [];
 
-        renderSpecialDayList();
-        loadSpecialDayIntoFormByDate(false);
+        renderSpecialDaysList();
 
       } catch (err) {
-        console.error(err);
-        document.getElementById("special-day-list").innerHTML =
-          `<p class="text-sm text-red-500">特別日を取得できませんでした。${escapeHtml(err.message)}</p>`;
+        document.getElementById("special-days-list").innerHTML = `
+          <div class="bg-red-50 border border-red-200 text-red-600 rounded-2xl p-5 text-center font-bold">
+            特別日設定を取得できませんでした。<br>${escapeHtml(err.message)}
+          </div>
+        `;
       }
     }
 
     function renderSpecialShiftFields() {
       const mode = document.getElementById("special-mode").value;
-      const container = document.getElementById("special-shift-fields");
+      const box = document.getElementById("special-shift-fields");
 
       if (mode === "closed") {
-        container.innerHTML = `
-          <div class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm font-black">
+        box.innerHTML = `
+          <div class="lg:col-span-2 bg-red-50 border border-red-200 text-red-600 rounded-2xl p-5 text-center font-black">
             この日は終日休業として保存されます。
           </div>
         `;
@@ -1205,32 +1160,35 @@
 
       const codes = mode === "both" ? ["lunch", "dinner"] : [mode];
 
-      container.innerHTML = codes.map((code) => renderSpecialShiftBlock(code)).join("");
+      box.innerHTML = codes.map((code) => renderSpecialShiftBlock(code)).join("");
     }
 
     function renderSpecialShiftBlock(code) {
-      const def = SHIFT_DEFS[code];
+      const label = code === "lunch" ? "昼営業" : "夜営業";
 
       return `
-        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
-          <div class="font-black mb-3">${def.label}</div>
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+          <p class="font-black">${label}</p>
 
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div class="grid grid-cols-3 gap-2 mt-3">
             <div>
               <label class="mini-label">開始</label>
-              <input id="special-${code}-open" type="time" class="input" value="${def.openTime}">
+              <input id="special-${code}-open" type="time" class="small-input" value="${code === "lunch" ? "11:30" : "17:00"}">
             </div>
             <div>
               <label class="mini-label">終了</label>
-              <input id="special-${code}-close" type="time" class="input" value="${def.closeTime}">
+              <input id="special-${code}-close" type="time" class="small-input" value="${code === "lunch" ? "14:30" : "23:00"}">
             </div>
             <div>
               <label class="mini-label">LO</label>
-              <input id="special-${code}-lo" type="time" class="input" value="${def.lastOrderTime}">
+              <input id="special-${code}-lo" type="time" class="small-input" value="${code === "lunch" ? "14:00" : "22:30"}">
             </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 mt-2">
             <div>
               <label class="mini-label">刻み</label>
-              <select id="special-${code}-interval" class="input">
+              <select id="special-${code}-interval" class="small-input">
                 <option value="15">15分</option>
                 <option value="30" selected>30分</option>
                 <option value="60">60分</option>
@@ -1238,37 +1196,126 @@
             </div>
             <div>
               <label class="mini-label">最大人数</label>
-              <input id="special-${code}-guests" type="number" min="0" class="input" value="${def.guests}">
+              <input id="special-${code}-guests" type="number" class="small-input" value="${defaultGuests(code)}">
             </div>
             <div>
               <label class="mini-label">最大組数</label>
-              <input id="special-${code}-groups" type="number" min="0" class="input" value="${def.groups}">
+              <input id="special-${code}-groups" type="number" class="small-input" value="${defaultGroups(code)}">
             </div>
-            <div class="md:col-span-2">
-              <label class="mini-label">枠メモ</label>
-              <input id="special-${code}-note" class="input" placeholder="例：祝日ランチ営業">
-            </div>
+          </div>
+
+          <div class="mt-2">
+            <label class="mini-label">メモ</label>
+            <input id="special-${code}-note" class="small-input" placeholder="任意">
           </div>
         </div>
       `;
     }
 
-    function loadSpecialDayIntoFormByDate(showNotice = true) {
-      const targetDate = document.getElementById("special-target-date").value;
+    function renderSpecialDaysList() {
+      const list = document.getElementById("special-days-list");
 
-      if (!targetDate) return;
-
-      const day = specialDays.find((item) => item.target_date === targetDate);
-
-      if (!day) {
-        if (showNotice) {
-          document.getElementById("special-mode").value = "closed";
-          document.getElementById("special-note").value = "";
-          renderSpecialShiftFields();
-        }
+      if (!specialDays.length) {
+        list.innerHTML = `
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center text-slate-400">
+            設定済みの特別日はありません。
+          </div>
+        `;
         return;
       }
 
+      list.innerHTML = specialDays.map((day) => {
+        const shifts = specialDayShifts
+          .filter((shift) => shift.target_date === day.target_date && shift.is_enabled)
+          .sort((a, b) => Number(a.sort_order || 100) - Number(b.sort_order || 100));
+
+        return `
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p class="font-black">${escapeHtml(day.target_date)}</p>
+                <p class="text-xs text-slate-500 mt-1">
+                  ${day.is_closed ? "終日休業" : shifts.map((s) => `${s.shift_label} ${formatTime(s.open_time)}-${formatTime(s.close_time)}`).join(" / ")}
+                </p>
+                ${day.note ? `<p class="text-xs text-slate-400 mt-1">${escapeHtml(day.note)}</p>` : ""}
+              </div>
+
+              <div class="flex gap-2">
+                <button onclick="editSpecialDay('${escapeJs(day.target_date)}')" class="btn bg-blue-50 text-blue-600 border border-blue-200 text-sm">
+                  編集
+                </button>
+                <button onclick="deleteSpecialDay('${escapeJs(day.target_date)}')" class="btn bg-red-50 text-red-600 border border-red-200 text-sm">
+                  削除
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function saveSpecialDay() {
+      try {
+        const targetDate = getValue("special-target-date");
+        const mode = getValue("special-mode");
+        const note = getValue("special-note") || null;
+
+        if (!targetDate) {
+          alert("対象日を入力してください。");
+          return;
+        }
+
+        const isClosed = mode === "closed";
+        let shifts = [];
+
+        if (!isClosed) {
+          const codes = mode === "both" ? ["lunch", "dinner"] : [mode];
+
+          shifts = codes.map((code) => ({
+            shiftCode: code,
+            shiftLabel: code === "lunch" ? "昼営業" : "夜営業",
+            isEnabled: true,
+            openTime: getValue(`special-${code}-open`),
+            closeTime: getValue(`special-${code}-close`),
+            lastOrderTime: getValue(`special-${code}-lo`),
+            slotIntervalMinutes: Number(getValue(`special-${code}-interval`) || 30),
+            maxGuestsPerSlot: Number(getValue(`special-${code}-guests`) || defaultGuests(code)),
+            maxGroupsPerSlot: Number(getValue(`special-${code}-groups`) || defaultGroups(code)),
+            sortOrder: code === "lunch" ? 10 : 20,
+            note: getValue(`special-${code}-note`) || null,
+          }));
+        }
+
+        const data = await adminFetch("/api/admin/special-day-shifts/update", {
+          method: "POST",
+          body: {
+            targetDate,
+            isClosed,
+            shifts,
+            note,
+            actorId: "admin_dashboard",
+          },
+        });
+
+        document.getElementById("special-result").innerText =
+          data.result?.message || "特別日設定を保存しました。";
+
+        showToast("特別日設定を保存しました。");
+
+        await loadSpecialDaySettings();
+
+      } catch (err) {
+        document.getElementById("special-result").innerText =
+          "保存できませんでした。" + err.message;
+      }
+    }
+
+    function editSpecialDay(targetDate) {
+      const day = specialDays.find((item) => item.target_date === targetDate);
+
+      if (!day) return;
+
+      document.getElementById("special-target-date").value = day.target_date;
       document.getElementById("special-note").value = day.note || "";
 
       if (day.is_closed) {
@@ -1277,10 +1324,12 @@
         return;
       }
 
-      const shifts = specialDayShifts.filter((s) => s.target_date === targetDate && s.is_enabled);
+      const shifts = specialDayShifts
+        .filter((item) => item.target_date === targetDate && item.is_enabled)
+        .sort((a, b) => Number(a.sort_order || 100) - Number(b.sort_order || 100));
 
-      const hasLunch = shifts.some((s) => s.shift_code === "lunch");
-      const hasDinner = shifts.some((s) => s.shift_code === "dinner");
+      const hasLunch = shifts.some((item) => item.shift_code === "lunch");
+      const hasDinner = shifts.some((item) => item.shift_code === "dinner");
 
       if (hasLunch && hasDinner) {
         document.getElementById("special-mode").value = "both";
@@ -1292,207 +1341,87 @@
 
       renderSpecialShiftFields();
 
-      shifts.forEach((shift) => {
-        fillSpecialShiftBlock(shift.shift_code, shift);
-      });
+      setTimeout(() => {
+        for (const shift of shifts) {
+          const code = shift.shift_code;
+
+          if (!document.getElementById(`special-${code}-open`)) continue;
+
+          document.getElementById(`special-${code}-open`).value = formatTime(shift.open_time);
+          document.getElementById(`special-${code}-close`).value = formatTime(shift.close_time);
+          document.getElementById(`special-${code}-lo`).value = formatTime(shift.last_order_time);
+          document.getElementById(`special-${code}-interval`).value = String(shift.slot_interval_minutes || 30);
+          document.getElementById(`special-${code}-guests`).value = String(shift.max_guests_per_slot || defaultGuests(code));
+          document.getElementById(`special-${code}-groups`).value = String(shift.max_groups_per_slot || defaultGroups(code));
+          document.getElementById(`special-${code}-note`).value = shift.note || "";
+        }
+      }, 0);
     }
 
-    function fillSpecialShiftBlock(code, shift) {
-      const open = document.getElementById(`special-${code}-open`);
-      if (!open) return;
-
-      document.getElementById(`special-${code}-open`).value = formatTime(shift.open_time);
-      document.getElementById(`special-${code}-close`).value = formatTime(shift.close_time);
-      document.getElementById(`special-${code}-lo`).value = formatTime(shift.last_order_time);
-      document.getElementById(`special-${code}-interval`).value = String(shift.slot_interval_minutes || 30);
-      document.getElementById(`special-${code}-guests`).value = String(shift.max_guests_per_slot || SHIFT_DEFS[code].guests);
-      document.getElementById(`special-${code}-groups`).value = String(shift.max_groups_per_slot || SHIFT_DEFS[code].groups);
-      document.getElementById(`special-${code}-note`).value = shift.note || "";
+    function clearSpecialForm() {
+      document.getElementById("special-target-date").value = getTodayDateString();
+      document.getElementById("special-mode").value = "closed";
+      document.getElementById("special-note").value = "";
+      renderSpecialShiftFields();
+      document.getElementById("special-result").innerText = "";
     }
 
-    async function saveSpecialDayShifts() {
-      try {
-        const targetDate = document.getElementById("special-target-date").value;
-        const mode = document.getElementById("special-mode").value;
-        const note = document.getElementById("special-note").value.trim();
+    function deleteSpecialDayFromForm() {
+      const date = getValue("special-target-date");
 
-        if (!targetDate) {
-          alert("対象日を選択してください。");
-          return;
-        }
-
-        const isClosed = mode === "closed";
-        let shifts = [];
-
-        if (!isClosed) {
-          const codes = mode === "both" ? ["lunch", "dinner"] : [mode];
-
-          shifts = codes.map((code) => {
-            const def = SHIFT_DEFS[code];
-
-            return {
-              shiftCode: code,
-              shiftLabel: def.label,
-              isEnabled: true,
-              openTime: document.getElementById(`special-${code}-open`).value || def.openTime,
-              closeTime: document.getElementById(`special-${code}-close`).value || def.closeTime,
-              lastOrderTime: document.getElementById(`special-${code}-lo`).value || def.lastOrderTime,
-              slotIntervalMinutes: Number(document.getElementById(`special-${code}-interval`).value || def.interval),
-              maxGuestsPerSlot: Number(document.getElementById(`special-${code}-guests`).value || def.guests),
-              maxGroupsPerSlot: Number(document.getElementById(`special-${code}-groups`).value || def.groups),
-              sortOrder: def.sortOrder,
-              note: document.getElementById(`special-${code}-note`).value || null
-            };
-          });
-        }
-
-        const data = await adminFetch("/api/admin/special-day-shifts/update", {
-          method: "POST",
-          body: JSON.stringify({
-            targetDate,
-            isClosed,
-            shifts,
-            note,
-            actorId: "admin_dashboard"
-          })
-        });
-
-        showToast(data.result?.message || "特別日設定を保存しました。");
-        await loadSpecialDayShifts();
-        await loadAdminDay();
-
-      } catch (err) {
-        alert("特別日設定を保存できませんでした。\n" + err.message);
+      if (!date) {
+        alert("対象日を入力してください。");
+        return;
       }
+
+      deleteSpecialDay(date);
     }
 
     async function deleteSpecialDay(targetDate) {
-      if (!confirm(`${targetDate} の特別日設定を削除しますか？`)) {
-        return;
-      }
+      if (!confirm(`${targetDate} の特別日設定を削除しますか？`)) return;
 
       try {
         const data = await adminFetch("/api/admin/special-days/delete", {
           method: "POST",
-          body: JSON.stringify({
+          body: {
             targetDate,
-            actorId: "admin_dashboard"
-          })
+            actorId: "admin_dashboard",
+          },
         });
 
-        showToast(data.result?.message || "特別日設定を削除しました。");
-        await loadSpecialDayShifts();
-        await loadAdminDay();
+        document.getElementById("special-result").innerText =
+          data.result?.message || "特別日設定を削除しました。";
+
+        showToast("特別日設定を削除しました。");
+
+        await loadSpecialDaySettings();
 
       } catch (err) {
         alert("削除できませんでした。\n" + err.message);
       }
     }
 
-    function editSpecialDay(targetDate) {
-      document.getElementById("special-target-date").value = targetDate;
-      loadSpecialDayIntoFormByDate();
-      document.getElementById("special-target-date").scrollIntoView({ behavior: "smooth", block: "center" });
+    // =========================================================
+    // Utilities
+    // =========================================================
+
+    function getValue(id) {
+      return document.getElementById(id)?.value?.trim() || "";
     }
 
-    function clearSpecialDayForm() {
-      document.getElementById("special-target-date").value = getTodayDateString();
-      document.getElementById("special-mode").value = "closed";
-      document.getElementById("special-note").value = "";
-      renderSpecialShiftFields();
+    function defaultGuests(code) {
+      return code === "lunch" ? 12 : 20;
     }
 
-    function renderSpecialDayList() {
-      const container = document.getElementById("special-day-list");
-
-      if (!specialDays.length) {
-        container.innerHTML = `
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-400 text-center">
-            登録済みの特別日はありません。
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = specialDays.map((day) => {
-        const shifts = specialDayShifts
-          .filter((s) => s.target_date === day.target_date && s.is_enabled)
-          .sort((a, b) => Number(a.sort_order || 100) - Number(b.sort_order || 100));
-
-        const body = day.is_closed
-          ? `<span class="text-red-600 font-black">終日休業</span>`
-          : shifts.length
-            ? shifts.map((s) => `
-                <span class="inline-flex items-center bg-blue-50 border border-blue-200 text-blue-700 rounded-full px-2 py-1 text-[11px] font-black mr-1 mb-1">
-                  ${escapeHtml(s.shift_label || s.shift_code)}
-                  ${formatTime(s.open_time)}〜${formatTime(s.close_time)}
-                </span>
-              `).join("")
-            : `<span class="text-amber-600 font-black">特別営業 / 営業枠未設定</span>`;
-
-        return `
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
-            <div class="flex justify-between items-start gap-3">
-              <div>
-                <p class="font-black">${day.target_date}</p>
-                <div class="mt-1">${body}</div>
-                ${day.note ? `<p class="text-xs text-slate-500 mt-1">${escapeHtml(day.note)}</p>` : ""}
-              </div>
-
-              <div class="flex gap-2 shrink-0">
-                <button onclick="editSpecialDay('${escapeJs(day.target_date)}')" class="text-xs font-black bg-white border border-slate-200 text-slate-700 px-3 py-2 rounded-xl">
-                  編集
-                </button>
-                <button onclick="deleteSpecialDay('${escapeJs(day.target_date)}')" class="text-xs font-black bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-xl">
-                  削除
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("");
+    function defaultGroups(code) {
+      return code === "lunch" ? 5 : 8;
     }
 
-    function detectShiftLabel(dateString, timeString) {
-      const special = specialDays.find((d) => d.target_date === dateString);
-
-      if (special) {
-        if (special.is_closed) return "臨時休業";
-
-        const specialShift = findShiftByTime(
-          specialDayShifts.filter((s) => s.target_date === dateString && s.is_enabled),
-          timeString
-        );
-
-        if (specialShift) return specialShift.shift_label || specialShift.shift_code || "特別営業";
-
-        return "特別営業";
-      }
-
-      const dow = new Date(`${dateString}T00:00:00`).getDay();
-
-      const shift = findShiftByTime(
-        businessShifts.filter((s) => Number(s.dow) === dow && s.is_enabled),
-        timeString
-      );
-
-      return shift?.shift_label || shift?.shift_code || "通常営業";
-    }
-
-    function findShiftByTime(shifts, timeString) {
-      const target = timeToMinutes(formatTime(timeString));
-
-      return shifts.find((shift) => {
-        const open = timeToMinutes(formatTime(shift.open_time));
-        const last = timeToMinutes(formatTime(shift.last_order_time || shift.close_time));
-
-        return target >= open && target <= last;
-      });
-    }
-
-    function timeToMinutes(value) {
-      const [h, m] = String(value || "00:00").slice(0, 5).split(":").map(Number);
-      return h * 60 + m;
+    function shortUserId(value) {
+      if (!value) return "-";
+      const text = String(value);
+      if (text.length <= 10) return text;
+      return `${text.slice(0, 4)}...${text.slice(-4)}`;
     }
 
     function getTodayDateString() {
@@ -1506,15 +1435,15 @@
       return `${yyyy}-${mm}-${dd}`;
     }
 
-    function addDays(dateString, days) {
+    function addDaysToDateString(dateString, days) {
       const date = new Date(`${dateString}T00:00:00`);
-      date.setDate(date.getDate() + days);
+      date.setDate(date.getDate() + Number(days || 0));
       return formatDate(date);
     }
 
     function addMonthsToDateString(dateString, months) {
       const date = new Date(`${dateString}T00:00:00`);
-      date.setMonth(date.getMonth() + months);
+      date.setMonth(date.getMonth() + Number(months || 0));
       return formatDate(date);
     }
 
@@ -1525,6 +1454,7 @@
 
     function showToast(message) {
       const toast = document.getElementById("toast");
+
       toast.innerText = message;
       toast.classList.remove("hidden");
 
@@ -1540,10 +1470,6 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
-    }
-
-    function escapeAttr(value) {
-      return escapeHtml(value).replaceAll("`", "&#096;");
     }
 
     function escapeJs(value) {
