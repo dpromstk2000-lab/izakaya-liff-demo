@@ -70,6 +70,10 @@ export async function onRequest(context) {
       return await updateShopStatus(request, env);
     }
 
+    if (url.pathname === "/api/admin/customer" && request.method === "POST") {
+      return await updateCustomerAdmin(request, env);
+    }
+
     return jsonResponse({
       ok: false,
       error: "Not found",
@@ -545,6 +549,52 @@ async function updateShopStatus(request, env) {
         p_shop_id: SHOP_ID,
         p_status: body.status,
         p_message: body.message || null,
+        p_actor_id: body.actorId || "admin",
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    result: Array.isArray(result) ? result[0] : result,
+  }, env);
+}
+
+async function updateCustomerAdmin(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+
+  if (!body.lineUserId) {
+    throw new Error("lineUserId が必要です");
+  }
+
+  if (!body.status) {
+    throw new Error("顧客ステータスが必要です");
+  }
+
+  const allowedStatuses = [
+    "new",
+    "regular",
+    "vip",
+    "caution",
+    "blocked",
+  ];
+
+  if (!allowedStatuses.includes(body.status)) {
+    throw new Error("不正な顧客ステータスです");
+  }
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_update_customer_admin",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_line_user_id: body.lineUserId,
+        p_status: body.status,
+        p_memo: body.memo || null,
         p_actor_id: body.actorId || "admin",
       }),
     }
