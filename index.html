@@ -124,6 +124,20 @@
         </button>
       </div>
 
+      <div class="mt-5">
+        <label class="mini-label">予約名</label>
+        <input
+          id="reservation-name"
+          type="text"
+          class="input"
+          maxlength="80"
+          placeholder="例：山田 / 山田太郎 / 株式会社DPRO 山田"
+        />
+        <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+          お店で確認するお名前です。会社名・苗字だけでも構いません。LINEの表示名とは別に保存されます。
+        </p>
+      </div>
+
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
         <div>
           <label class="mini-label">予約日</label>
@@ -240,6 +254,20 @@
 
       <input id="change-old-reservation-id" type="hidden" />
 
+      <div class="mt-4">
+        <label class="mini-label">予約名</label>
+        <input
+          id="change-reservation-name"
+          type="text"
+          class="input"
+          maxlength="80"
+          placeholder="例：山田 / 株式会社DPRO 山田"
+        />
+        <p class="text-[11px] text-slate-400 mt-2">
+          変更後の予約でも、お店にはこの名前で表示されます。
+        </p>
+      </div>
+
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
         <div>
           <label class="mini-label">変更後の日付</label>
@@ -323,6 +351,7 @@
 
     let liffReady = false;
     let lineProfile = null;
+    let customerInfo = null;
 
     let publicSettings = null;
     let selectedTime = "";
@@ -331,7 +360,6 @@
 
     window.addEventListener("DOMContentLoaded", async () => {
       setupInitialDates();
-
       await initializeApp();
     });
 
@@ -405,7 +433,7 @@
 
       document.getElementById("profile-box").innerHTML = `
         <div class="font-black">${escapeHtml(lineProfile.displayName || "LINEユーザー")}</div>
-        <div class="text-[10px] text-slate-400">ログイン中</div>
+        <div class="text-[10px] text-slate-400">LINEログイン中</div>
       `;
     }
 
@@ -523,7 +551,7 @@
       const url = new URL(location.href);
 
       url.searchParams.delete("liff.referrer");
-      url.searchParams.set("v", "23");
+      url.searchParams.set("v", "24-3");
 
       return url.toString();
     }
@@ -579,6 +607,20 @@
             営業時間設定を取得できませんでした。<br>${escapeHtml(err.message)}
           </div>
         `;
+      }
+    }
+
+    function applyLastReservationName() {
+      const input = document.getElementById("reservation-name");
+
+      if (!input) return;
+
+      if (input.value.trim()) return;
+
+      const lastName = customerInfo?.last_reservation_name;
+
+      if (lastName) {
+        input.value = lastName;
       }
     }
 
@@ -844,10 +886,23 @@
 
         if (!idToken) return;
 
+        const reservationName = document.getElementById("reservation-name").value.trim();
         const reserveDate = document.getElementById("reserve-date").value;
         const partySize = Number(document.getElementById("party-size").value);
         const seatType = document.getElementById("seat-type").value;
         const customerNote = document.getElementById("customer-note").value.trim();
+
+        if (!reservationName) {
+          alert("予約名を入力してください。会社名・苗字だけでも構いません。");
+          document.getElementById("reservation-name").focus();
+          return;
+        }
+
+        if (reservationName.length > 80) {
+          alert("予約名は80文字以内で入力してください。");
+          document.getElementById("reservation-name").focus();
+          return;
+        }
 
         if (!reserveDate) {
           alert("予約日を選択してください。");
@@ -869,6 +924,7 @@
           method: "POST",
           body: JSON.stringify({
             idToken,
+            reservationName,
             reserveDate,
             reserveTime: selectedTime,
             partySize,
@@ -930,7 +986,10 @@
           method: "GET"
         });
 
+        customerInfo = data.customer || null;
         myReservations = data.reservations || [];
+
+        applyLastReservationName();
         renderMyReservations();
 
       } catch (err) {
@@ -955,6 +1014,10 @@
       }
     }
 
+    function getReservationDisplayName(res) {
+      return res.reservation_name || res.line_name || "お客様";
+    }
+
     function renderMyReservations() {
       const list = document.getElementById("my-reservation-list");
 
@@ -971,11 +1034,16 @@
         const statusLabel = STATUS_LABELS[res.status] || res.status;
         const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
         const shiftLabel = res.shift_label || SHIFT_FALLBACK_LABELS[res.shift_code] || "営業枠";
+        const displayName = getReservationDisplayName(res);
 
         return `
           <article class="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-3">
             <div class="flex items-start justify-between gap-3">
               <div>
+                <p class="text-sm font-black text-slate-800 mb-1">
+                  予約名：${escapeHtml(displayName)} 様
+                </p>
+
                 <div class="flex flex-wrap items-center gap-2">
                   <p class="text-lg font-black">
                     ${escapeHtml(res.reserve_date)} ${formatTime(res.reserve_time)}
@@ -993,6 +1061,12 @@
                 <p class="text-sm text-slate-500 mt-2">
                   ${Number(res.party_size || 0)}名 / ${escapeHtml(seatLabel)}
                 </p>
+
+                ${res.line_name && res.line_name !== displayName ? `
+                  <p class="text-[11px] text-slate-400 mt-1">
+                    LINE名：${escapeHtml(res.line_name)}
+                  </p>
+                ` : ""}
 
                 ${res.customer_note ? `
                   <p class="text-xs text-slate-500 mt-2">${escapeHtml(res.customer_note)}</p>
@@ -1055,7 +1129,10 @@
         return;
       }
 
+      const displayName = getReservationDisplayName(reservation);
+
       document.getElementById("change-old-reservation-id").value = reservation.id;
+      document.getElementById("change-reservation-name").value = displayName;
       document.getElementById("change-date").value = reservation.reserve_date;
       document.getElementById("change-party-size").value = String(reservation.party_size || 2);
       document.getElementById("change-seat-type").value = reservation.seat_type || "any";
@@ -1068,6 +1145,7 @@
 
       document.getElementById("change-current-info").innerHTML = `
         <p class="font-bold">現在の予約</p>
+        <p class="mt-1">予約名：${escapeHtml(displayName)} 様</p>
         <p class="mt-1">${escapeHtml(reservation.reserve_date)} ${formatTime(reservation.reserve_time)}（${escapeHtml(shiftLabel)}） / ${Number(reservation.party_size || 0)}名</p>
       `;
 
@@ -1086,10 +1164,23 @@
         if (!idToken) return;
 
         const oldReservationId = document.getElementById("change-old-reservation-id").value;
+        const reservationName = document.getElementById("change-reservation-name").value.trim();
         const reserveDate = document.getElementById("change-date").value;
         const partySize = Number(document.getElementById("change-party-size").value);
         const seatType = document.getElementById("change-seat-type").value;
         const reason = document.getElementById("change-reason").value.trim();
+
+        if (!reservationName) {
+          alert("予約名を入力してください。");
+          document.getElementById("change-reservation-name").focus();
+          return;
+        }
+
+        if (reservationName.length > 80) {
+          alert("予約名は80文字以内で入力してください。");
+          document.getElementById("change-reservation-name").focus();
+          return;
+        }
 
         if (!reserveDate) {
           alert("変更後の日付を選択してください。");
@@ -1108,6 +1199,7 @@
           body: JSON.stringify({
             idToken,
             oldReservationId,
+            reservationName,
             reserveDate,
             reserveTime: selectedChangeTime,
             partySize,
