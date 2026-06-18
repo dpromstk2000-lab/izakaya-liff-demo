@@ -366,6 +366,11 @@ function defaultShiftMaxGroups(shiftCode) {
   return 8;
 }
 
+function formatTime(value) {
+  if (!value) return "";
+  return String(value).slice(0, 5);
+}
+
 // =========================================================
 // Public APIs
 // =========================================================
@@ -463,7 +468,7 @@ async function getMyReservations(request, env) {
 
   const data = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&line_user_id=eq.${lineUserId}&status=in.(pending,confirmed)&select=id,reserve_date,reserve_time,party_size,seat_type,preferences,status,customer_note,created_at,updated_at&order=reserve_date.asc&order=reserve_time.asc`
+    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&line_user_id=eq.${lineUserId}&status=in.(pending,confirmed)&select=id,reserve_date,reserve_time,party_size,seat_type,preferences,status,customer_note,shift_code,shift_label,is_special_day,created_at,updated_at&order=reserve_date.asc&order=reserve_time.asc`
   );
 
   return jsonResponse({
@@ -486,7 +491,7 @@ async function cancelMyReservation(request, env) {
 
   const reservations = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?id=eq.${reservationId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,status`
+    `/rest/v1/iz_demo_reservations?id=eq.${reservationId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,status,shift_code,shift_label,is_special_day`
   );
 
   const reservation = reservations?.[0];
@@ -553,7 +558,7 @@ async function changeMyReservation(request, env) {
 
   const reservations = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?id=eq.${oldReservationId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,status`
+    `/rest/v1/iz_demo_reservations?id=eq.${oldReservationId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,status,shift_code,shift_label,is_special_day`
   );
 
   const oldReservation = reservations?.[0];
@@ -615,7 +620,7 @@ async function getAdminDay(request, env, url) {
 
   const reservations = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&reserve_date=eq.${encodedDate}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,seat_type,preferences,status,source,customer_note,admin_note,cancel_reason,created_at,updated_at,customer:iz_demo_customers(status,memo,visit_count,no_show_count)&order=reserve_time.asc&order=created_at.asc`
+    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&reserve_date=eq.${encodedDate}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,seat_type,preferences,status,source,customer_note,admin_note,cancel_reason,shift_code,shift_label,is_special_day,created_at,updated_at,customer:iz_demo_customers(status,memo,visit_count,no_show_count)&order=reserve_time.asc&order=created_at.asc`
   );
 
   const activeReservations = (reservations || []).filter((reservation) => {
@@ -803,7 +808,6 @@ async function enqueueReminders(request, env) {
 
 // =========================================================
 // Business Hours Admin APIs
-// 旧形式。互換用として残す。
 // =========================================================
 
 async function getAdminBusinessHours(request, env) {
@@ -876,7 +880,6 @@ async function updateBusinessHours(request, env) {
 
 // =========================================================
 // Business Shifts Admin APIs
-// 新形式。昼・夜の2部制用。
 // =========================================================
 
 async function getAdminBusinessShifts(request, env) {
@@ -956,7 +959,6 @@ async function updateBusinessShifts(request, env) {
 
 // =========================================================
 // Special Day Admin APIs
-// 旧形式。互換用として残す。
 // =========================================================
 
 async function getAdminSpecialDays(request, env, url) {
@@ -1051,7 +1053,6 @@ async function deleteSpecialDay(request, env) {
 
 // =========================================================
 // Special Day Shifts Admin APIs
-// 新形式。特別営業日を昼だけ / 夜だけ / 両方営業に対応。
 // =========================================================
 
 async function getAdminSpecialDayShifts(request, env, url) {
@@ -1248,7 +1249,7 @@ async function getReservationForNotification(env, reservationId) {
 
   const data = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?id=eq.${encodedId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,seat_type,status,source`
+    `/rest/v1/iz_demo_reservations?id=eq.${encodedId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,seat_type,status,source,shift_code,shift_label,is_special_day`
   );
 
   return data?.[0] || null;
@@ -1278,10 +1279,12 @@ function buildLineMessage(notification, reservation) {
   ];
 
   if (reservation) {
+    const shiftLabel = reservation.shift_label || "営業枠";
+
     lines.push("");
     lines.push("【予約情報】");
     lines.push(`お名前：${reservation.line_name || "お客様"} 様`);
-    lines.push(`日時：${reservation.reserve_date || ""} ${formatTime(reservation.reserve_time)}`);
+    lines.push(`日時：${reservation.reserve_date || ""} ${formatTime(reservation.reserve_time)}（${shiftLabel}）`);
     lines.push(`人数：${reservation.party_size || "-"}名`);
   }
 
@@ -1289,11 +1292,6 @@ function buildLineMessage(notification, reservation) {
   lines.push("居酒屋DPRO");
 
   return lines.join("\n");
-}
-
-function formatTime(value) {
-  if (!value) return "";
-  return String(value).slice(0, 5);
 }
 
 async function pushLineMessage(token, to, text) {
