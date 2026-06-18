@@ -30,6 +30,14 @@ export async function onRequest(context) {
       return await getPublicSettings(env);
     }
 
+    if (url.pathname === "/api/reservations/create" && request.method === "POST") {
+      return await createReservation(request, env);
+    }
+
+    if (url.pathname === "/api/reservations/my" && request.method === "GET") {
+      return await getMyReservations(request, env);
+    }
+
     return jsonResponse({
       ok: false,
       error: "Not found",
@@ -61,6 +69,14 @@ function jsonResponse(data, env, status = 200) {
       "Content-Type": "application/json; charset=utf-8",
     },
   });
+}
+
+async function readJson(request) {
+  try {
+    return await request.json();
+  } catch {
+    throw new Error("JSONの形式が不正です");
+  }
 }
 
 function requireEnv(env, key) {
@@ -113,6 +129,38 @@ async function supabaseFetch(env, path, options = {}) {
   return data;
 }
 
+async function verifyLineIdToken(env, idToken) {
+  if (!idToken) {
+    throw new Error("LINE IDトークンがありません");
+  }
+
+  const channelId = requireEnv(env, "LINE_CHANNEL_ID");
+
+  const params = new URLSearchParams();
+  params.set("id_token", idToken);
+  params.set("client_id", channelId);
+
+  const res = await fetch("https://api.line.me/oauth2/v2.1/verify", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params,
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error_description || data.error || "LINE IDトークン検証に失敗しました");
+  }
+
+  return {
+    lineUserId: data.sub,
+    lineName: data.name || "LINEユーザー",
+    picture: data.picture || null,
+  };
+}
+
 async function getPublicStatus(env) {
   const data = await supabaseFetch(
     env,
@@ -146,5 +194,54 @@ async function getPublicSettings(env) {
     shop: shop?.[0] || null,
     businessHours,
     specialDays,
+  }, env);
+}
+
+async function createReservation(request, env) {
+  const body = await readJson(request);
+
+  const profile = await verifyLineIdToken(env, body.idToken);
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_create_reservation",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_line_user_id: profile.lineUserId,
+        p_line_name: profile.lineName,
+        p_reserve_date: body.reserveDate,
+        p_reserve_time: body.reserveTime,
+        p_party_size: Number(body.partySize),
+        p_seat_type: body.seatType || "any",
+        p_preferences: Array.isArray(body.preferences) ? body.preferences : [],
+        p_customer_note: body.customerNote || null,
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    profile,
+    result: result?.[0] || result,
+  }, env);
+}
+
+async function getMyReservations(request, env) {
+  const auth = request.headers.get("Authorization") || "";
+  const idToken = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+
+  const profile = await verifyLineIdToken(env, idToken);
+
+  const data = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&line_user_id=eq.${encodeURIComponent(profile.lineUserId)}&select=id,reserve_date,reserve_time,party_size,seat_type,preferences,status,customer_note,created_at,updated_at&order=reserve_date.asc&order=reserve_time.asc`
+  );
+
+  return jsonResponse({
+    ok: true,
+    profile,
+    reservations: data,
   }, env);
 }
