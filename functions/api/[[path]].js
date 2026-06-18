@@ -78,6 +78,10 @@ export async function onRequest(context) {
       return await sendQueuedNotifications(request, env);
     }
 
+    if (url.pathname === "/api/admin/reminders/enqueue" && request.method === "POST") {
+      return await enqueueReminders(request, env);
+    }
+
     return jsonResponse({
       ok: false,
       error: "Not found",
@@ -600,6 +604,35 @@ async function updateCustomerAdmin(request, env) {
         p_status: body.status,
         p_memo: body.memo || null,
         p_actor_id: body.actorId || "admin",
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    result: Array.isArray(result) ? result[0] : result,
+  }, env);
+}
+
+async function enqueueReminders(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+
+  const targetDate =
+    body.targetDate && String(body.targetDate).trim()
+      ? String(body.targetDate).trim()
+      : null;
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_enqueue_reminders",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_target_date: targetDate,
+        p_actor_id: body.actorId || "admin_dashboard",
       }),
     }
   );
