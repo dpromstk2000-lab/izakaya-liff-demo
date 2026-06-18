@@ -51,6 +51,10 @@ export async function onRequest(context) {
       return await cancelMyReservation(request, env);
     }
 
+    if (url.pathname === "/api/reservations/change" && request.method === "POST") {
+      return await changeMyReservation(request, env);
+    }
+
     // =========================
     // Admin APIs
     // =========================
@@ -350,6 +354,76 @@ async function cancelMyReservation(request, env) {
     ok: true,
     profile,
     reservation,
+    result: Array.isArray(result) ? result[0] : result,
+  }, env);
+}
+
+async function changeMyReservation(request, env) {
+  const body = await readJson(request);
+
+  const profile = await verifyLineIdToken(env, body.idToken);
+
+  if (!body.oldReservationId) {
+    throw new Error("oldReservationId が必要です");
+  }
+
+  if (!body.reserveDate) {
+    throw new Error("変更後の日付が必要です");
+  }
+
+  if (!body.reserveTime) {
+    throw new Error("変更後の時間が必要です");
+  }
+
+  if (!body.partySize || Number(body.partySize) < 1) {
+    throw new Error("変更後の人数が不正です");
+  }
+
+  const oldReservationId = encodeURIComponent(body.oldReservationId);
+
+  const reservations = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_reservations?id=eq.${oldReservationId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,status`
+  );
+
+  const oldReservation = reservations?.[0];
+
+  if (!oldReservation) {
+    throw new Error("変更対象の予約が見つかりません");
+  }
+
+  if (oldReservation.line_user_id !== profile.lineUserId) {
+    throw new Error("この予約は変更できません");
+  }
+
+  if (!["pending", "confirmed"].includes(oldReservation.status)) {
+    throw new Error("この予約はすでにキャンセル済み、または変更できない状態です");
+  }
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_change_reservation",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_old_reservation_id: body.oldReservationId,
+        p_line_user_id: profile.lineUserId,
+        p_line_name: profile.lineName,
+        p_new_reserve_date: body.reserveDate,
+        p_new_reserve_time: body.reserveTime,
+        p_new_party_size: Number(body.partySize),
+        p_new_seat_type: body.seatType || "any",
+        p_new_preferences: Array.isArray(body.preferences) ? body.preferences : [],
+        p_change_reason: body.reason || "顧客による予約変更",
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    profile,
+    oldReservation,
     result: Array.isArray(result) ? result[0] : result,
   }, env);
 }
