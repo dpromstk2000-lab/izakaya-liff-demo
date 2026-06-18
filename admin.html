@@ -4,70 +4,176 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>居酒屋DPRO オーナーダッシュボード</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
-        body { font-family: 'Noto Sans JP', sans-serif; }
-        /* スクロールバー非表示（モバイル向け） */
-        ::-webkit-scrollbar { display: none; }
+
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        .status-button-active {
+            color: white !important;
+            transform: scale(1.02);
+        }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen pb-20">
+
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-24">
 
     <header class="bg-slate-900 text-white p-4 shadow-md sticky top-0 z-50">
-        <div class="max-w-3xl mx-auto flex justify-between items-center">
-            <h1 class="text-lg font-bold tracking-widest">🏮 居酒屋DPRO 管理システム</h1>
-            <div class="text-xs text-slate-400">現在: <span id="current-shop-status" class="font-bold text-white">取得中...</span></div>
+        <div class="max-w-5xl mx-auto flex justify-between items-center gap-3">
+            <div>
+                <h1 class="text-lg font-bold tracking-widest">🏮 居酒屋DPRO 管理システム</h1>
+                <p class="text-[10px] text-slate-400 mt-1">Pages Functions / iz_demo_ DB版</p>
+            </div>
+
+            <div class="text-right">
+                <div class="text-xs text-slate-400">
+                    現在:
+                    <span id="current-shop-status" class="font-bold text-white">取得中...</span>
+                </div>
+                <button onclick="resetAdminToken()" class="text-[10px] text-slate-400 underline mt-1">
+                    管理認証をリセット
+                </button>
+            </div>
         </div>
     </header>
 
-    <main class="max-w-3xl mx-auto p-4 space-y-6 mt-4">
-        
+    <div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 rounded-xl shadow-lg text-sm font-bold bg-slate-900 text-white"></div>
+
+    <section id="auth-panel" class="max-w-md mx-auto mt-8 p-5 bg-white rounded-2xl shadow-sm border border-slate-200 hidden">
+        <h2 class="text-lg font-bold text-slate-800 mb-2">管理者認証</h2>
+        <p class="text-xs text-slate-500 mb-4">
+            Cloudflare Pages の <span class="font-bold">ADMIN_TOKEN</span> に設定した管理用パスワードを入力してください。
+        </p>
+
+        <input
+            id="admin-token-input"
+            type="password"
+            class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-slate-800"
+            placeholder="ADMIN_TOKEN"
+        >
+
+        <button
+            onclick="saveAdminToken()"
+            class="w-full mt-3 bg-slate-900 text-white font-bold py-3 rounded-xl active:scale-95 transition"
+        >
+            管理画面を開く
+        </button>
+    </section>
+
+    <main id="admin-app" class="hidden max-w-5xl mx-auto p-4 space-y-6 mt-4">
+
         <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <h2 class="text-sm font-bold text-slate-500 mb-3 uppercase tracking-wider">店舗ステータスの変更（顧客画面に即反映）</h2>
-            <div class="grid grid-cols-3 gap-2">
-                <button onclick="updateShopStatus('空席あり')" id="btn-status-open" class="py-3 rounded-xl font-bold text-sm border-2 border-emerald-500 text-emerald-600 bg-emerald-50 transition active:scale-95">
-                    ⭕ 空席あり
-                </button>
-                <button onclick="updateShopStatus('残りわずか')" id="btn-status-few" class="py-3 rounded-xl font-bold text-sm border-2 border-amber-500 text-amber-600 bg-amber-50 transition active:scale-95">
-                    🔺 残りわずか
-                </button>
-                <button onclick="updateShopStatus('満席')" id="btn-status-full" class="py-3 rounded-xl font-bold text-sm border-2 border-red-500 text-red-600 bg-red-50 transition active:scale-95">
-                    ❌ 満席
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                    店舗ステータスの変更
+                </h2>
+                <button onclick="fetchShopStatus()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                    🔄 更新
                 </button>
             </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <button onclick="updateShopStatus('open')" id="btn-status-open" class="py-3 rounded-xl font-bold text-sm border-2 border-emerald-500 text-emerald-600 bg-emerald-50 transition active:scale-95">
+                    ⭕ 空席あり
+                </button>
+
+                <button onclick="updateShopStatus('few')" id="btn-status-few" class="py-3 rounded-xl font-bold text-sm border-2 border-amber-500 text-amber-600 bg-amber-50 transition active:scale-95">
+                    🔺 残りわずか
+                </button>
+
+                <button onclick="updateShopStatus('full')" id="btn-status-full" class="py-3 rounded-xl font-bold text-sm border-2 border-red-500 text-red-600 bg-red-50 transition active:scale-95">
+                    ❌ 満席
+                </button>
+
+                <button onclick="updateShopStatus('closed')" id="btn-status-closed" class="py-3 rounded-xl font-bold text-sm border-2 border-slate-500 text-slate-600 bg-slate-50 transition active:scale-95">
+                    🛑 受付停止
+                </button>
+            </div>
+
+            <p class="text-[10px] text-slate-400 mt-3">
+                ※このステータスは顧客LIFFの「今夜の空席」表示に反映されます。
+            </p>
         </section>
 
         <section class="bg-slate-900 text-white rounded-2xl shadow-lg overflow-hidden">
             <div class="flex justify-between items-center p-2">
                 <button onclick="changeDate(-1)" class="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition active:scale-95">
-                    <span class="text-xl">◀</span> 
+                    <span class="text-xl">◀</span>
                 </button>
-                <div class="text-center">
-                    <div id="display-date" class="text-xl font-bold tracking-wider">2026/06/13 (土)</div>
+
+                <div class="text-center flex-1">
+                    <div id="display-date" class="text-xl font-bold tracking-wider">----</div>
                     <div class="text-xs text-slate-400 mt-1">
-                        予約: <span id="daily-count" class="text-amber-400 font-bold text-base">0</span> 件 
-                        / 人数: <span id="daily-guests" class="text-amber-400 font-bold text-base">0</span> 名
+                        予約:
+                        <span id="daily-count" class="text-amber-400 font-bold text-base">0</span>
+                        件 /
+                        人数:
+                        <span id="daily-guests" class="text-amber-400 font-bold text-base">0</span>
+                        名 /
+                        仮予約:
+                        <span id="daily-pending" class="text-amber-400 font-bold text-base">0</span>
+                        件
                     </div>
                 </div>
+
                 <button onclick="changeDate(1)" class="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition active:scale-95">
                     <span class="text-xl">▶</span>
                 </button>
             </div>
-            <div class="bg-slate-800 text-center text-xs py-2 cursor-pointer hover:bg-slate-700 transition text-slate-300" onclick="resetToToday()">
-                📅 今日の予約に戻る
+
+            <div class="grid grid-cols-2 border-t border-slate-700">
+                <button class="bg-slate-800 text-center text-xs py-2 cursor-pointer hover:bg-slate-700 transition text-slate-300" onclick="resetToToday()">
+                    📅 今日の予約に戻る
+                </button>
+
+                <label class="bg-slate-800 text-center text-xs py-2 cursor-pointer hover:bg-slate-700 transition text-slate-300">
+                    日付指定
+                    <input id="date-picker" type="date" class="ml-2 bg-slate-700 text-white rounded px-2 py-1 text-xs" onchange="jumpToDate(this.value)">
+                </label>
+            </div>
+        </section>
+
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                <button onclick="setStatusFilter('all')" id="filter-all" class="filter-btn bg-slate-900 text-white rounded-xl py-2 text-xs font-bold">
+                    すべて
+                </button>
+                <button onclick="setStatusFilter('active')" id="filter-active" class="filter-btn bg-slate-100 text-slate-600 rounded-xl py-2 text-xs font-bold">
+                    有効予約
+                </button>
+                <button onclick="setStatusFilter('pending')" id="filter-pending" class="filter-btn bg-slate-100 text-slate-600 rounded-xl py-2 text-xs font-bold">
+                    仮予約
+                </button>
+                <button onclick="setStatusFilter('confirmed')" id="filter-confirmed" class="filter-btn bg-slate-100 text-slate-600 rounded-xl py-2 text-xs font-bold">
+                    確定
+                </button>
+                <button onclick="setStatusFilter('cancelled')" id="filter-cancelled" class="filter-btn bg-slate-100 text-slate-600 rounded-xl py-2 text-xs font-bold">
+                    キャンセル
+                </button>
             </div>
         </section>
 
         <section>
             <div class="flex justify-between items-end mb-3 px-1">
-                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">タイムライン</h2>
+                <div>
+                    <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">タイムライン</h2>
+                    <p class="text-[10px] text-slate-400 mt-1">仮予約は「予約を確定する」で顧客通知キューに入ります。</p>
+                </div>
+
                 <button onclick="fetchReservations()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                     🔄 最新に更新
                 </button>
             </div>
-            
+
             <div id="reservation-list" class="space-y-3">
                 <p class="text-center text-slate-400 py-8 text-sm animate-pulse">読み込み中...</p>
             </div>
@@ -75,60 +181,266 @@
     </main>
 
     <script>
-        // --- Supabase 初期設定 ---
-        const SUPABASE_URL = "https://cbknucemarcpbscirzyv.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_cT4vj0FoU1MtjFayuk7HVw_YcuSMR5J";
-        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const API_BASE = "";
 
-        // --- 状態管理 ---
-        let targetDate = new Date(); // 表示中の日付
+        const STATUS_LABELS = {
+            pending: "仮予約",
+            confirmed: "確定",
+            cancelled_customer: "顧客キャンセル",
+            cancelled_shop: "店舗キャンセル",
+            completed: "来店済み",
+            no_show: "無断キャンセル"
+        };
 
-        // 初期化処理
-        window.addEventListener('DOMContentLoaded', () => {
+        const SHOP_STATUS_LABELS = {
+            open: "空席あり",
+            few: "残りわずか",
+            full: "満席",
+            closed: "受付停止"
+        };
+
+        const SEAT_LABELS = {
+            any: "指定なし",
+            counter: "カウンター",
+            table: "テーブル",
+            private_room: "個室"
+        };
+
+        const CUSTOMER_STATUS_LABELS = {
+            new: "新規",
+            regular: "常連",
+            vip: "VIP",
+            caution: "注意",
+            blocked: "ブロック"
+        };
+
+        let targetDate = new Date();
+        let adminToken = localStorage.getItem("iz_demo_admin_token") || "";
+        let currentReservations = [];
+        let statusFilter = "all";
+
+        window.addEventListener("DOMContentLoaded", () => {
+            if (!adminToken) {
+                showAuthPanel();
+                return;
+            }
+
+            showAdminApp();
             fetchShopStatus();
             updateDateDisplay();
         });
 
-        // ==========================================
-        // 店舗ステータス管理機能
-        // ==========================================
+        function showAuthPanel() {
+            document.getElementById("auth-panel").classList.remove("hidden");
+            document.getElementById("admin-app").classList.add("hidden");
+        }
+
+        function showAdminApp() {
+            document.getElementById("auth-panel").classList.add("hidden");
+            document.getElementById("admin-app").classList.remove("hidden");
+        }
+
+        function saveAdminToken() {
+            const value = document.getElementById("admin-token-input").value.trim();
+
+            if (!value) {
+                alert("ADMIN_TOKENを入力してください。");
+                return;
+            }
+
+            adminToken = value;
+            localStorage.setItem("iz_demo_admin_token", value);
+
+            showAdminApp();
+            fetchShopStatus();
+            updateDateDisplay();
+        }
+
+        function resetAdminToken() {
+            if (!confirm("管理認証をリセットしますか？")) return;
+
+            localStorage.removeItem("iz_demo_admin_token");
+            adminToken = "";
+            location.reload();
+        }
+
+        function adminHeaders(extra = {}) {
+            return {
+                "Content-Type": "application/json",
+                "X-Admin-Token": adminToken,
+                ...extra
+            };
+        }
+
+        async function apiFetch(path, options = {}) {
+            const res = await fetch(`${API_BASE}${path}`, {
+                ...options,
+                headers: {
+                    ...(options.headers || {})
+                }
+            });
+
+            const data = await res.json().catch(() => null);
+
+            if (!res.ok || !data || data.ok === false) {
+                const message = data?.error || `APIエラー: ${res.status}`;
+
+                if (message.includes("管理者認証") || message.includes("ADMIN_TOKEN")) {
+                    localStorage.removeItem("iz_demo_admin_token");
+                    adminToken = "";
+                    showAuthPanel();
+                }
+
+                throw new Error(message);
+            }
+
+            return data;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+
+            toast.innerText = message;
+            toast.classList.remove("hidden");
+
+            setTimeout(() => {
+                toast.classList.add("hidden");
+            }, 2200);
+        }
+
+        function formatDate(date) {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, "0");
+            const dd = String(date.getDate()).padStart(2, "0");
+
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function formatDisplayDate(date) {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, "0");
+            const dd = String(date.getDate()).padStart(2, "0");
+            const days = ["日", "月", "火", "水", "木", "金", "土"];
+
+            return `${yyyy}/${mm}/${dd} (${days[date.getDay()]})`;
+        }
+
+        function formatTime(value) {
+            if (!value) return "";
+            return String(value).slice(0, 5);
+        }
+
+        function statusBadgeClass(status) {
+            if (status === "pending") {
+                return "bg-amber-100 text-amber-700 border border-amber-300";
+            }
+
+            if (status === "confirmed") {
+                return "bg-emerald-100 text-emerald-700 border border-emerald-300";
+            }
+
+            if (status === "completed") {
+                return "bg-blue-100 text-blue-700 border border-blue-300";
+            }
+
+            if (status === "no_show") {
+                return "bg-red-100 text-red-700 border border-red-300";
+            }
+
+            if (status === "cancelled_customer" || status === "cancelled_shop") {
+                return "bg-slate-100 text-slate-400 border border-slate-200";
+            }
+
+            return "bg-slate-200 text-slate-600";
+        }
+
+        function normalizeCustomer(customer) {
+            if (Array.isArray(customer)) {
+                return customer[0] || null;
+            }
+
+            return customer || null;
+        }
+
         async function fetchShopStatus() {
-            const { data, error } = await db.from('shop_status').select('status').single();
-            if (data) {
-                document.getElementById('current-shop-status').innerText = data.status;
-                highlightStatusButton(data.status);
+            try {
+                const data = await apiFetch("/api/public/status", {
+                    method: "GET"
+                });
+
+                const status = data.status?.status || "open";
+                const message = data.status?.message || SHOP_STATUS_LABELS[status] || status;
+
+                document.getElementById("current-shop-status").innerText = message;
+                highlightStatusButton(status);
+
+            } catch (err) {
+                console.error("店舗ステータス取得エラー:", err);
+                document.getElementById("current-shop-status").innerText = "取得失敗";
             }
         }
 
-        async function updateShopStatus(newStatus) {
-            // 確認ダイアログ
-            if (!confirm(`店舗を「${newStatus}」に変更しますか？顧客画面に即座に反映されます。`)) return;
+        async function updateShopStatus(status) {
+            const label = SHOP_STATUS_LABELS[status] || status;
 
-            const { error } = await db.from('shop_status').update({ status: newStatus }).eq('id', 1);
-            if (error) {
-                alert('エラーが発生しました: ' + error.message);
-            } else {
-                document.getElementById('current-shop-status').innerText = newStatus;
-                highlightStatusButton(newStatus);
-                // 成功時は小さくトースト通知などを出すとより良いですが、ここでは省略
+            if (!confirm(`店舗ステータスを「${label}」に変更しますか？`)) {
+                return;
+            }
+
+            try {
+                await apiFetch("/api/admin/shop-status", {
+                    method: "POST",
+                    headers: adminHeaders(),
+                    body: JSON.stringify({
+                        status,
+                        message: label,
+                        actorId: "admin_dashboard"
+                    })
+                });
+
+                showToast(`店舗ステータスを「${label}」に変更しました。`);
+                await fetchShopStatus();
+
+            } catch (err) {
+                console.error("店舗ステータス変更エラー:", err);
+                alert("エラーが発生しました。\n" + err.message);
             }
         }
 
         function highlightStatusButton(status) {
-            // 一旦すべてのボタンのスタイルを薄くする
-            ['open', 'few', 'full'].forEach(id => {
-                document.getElementById(`btn-status-${id}`).classList.replace('text-white', 'bg-opacity-10');
+            const buttonMap = {
+                open: "btn-status-open",
+                few: "btn-status-few",
+                full: "btn-status-full",
+                closed: "btn-status-closed"
+            };
+
+            Object.values(buttonMap).forEach(id => {
+                const button = document.getElementById(id);
+                if (!button) return;
+
+                button.classList.remove(
+                    "status-button-active",
+                    "bg-emerald-600",
+                    "bg-amber-600",
+                    "bg-red-600",
+                    "bg-slate-700",
+                    "text-white"
+                );
             });
 
-            // 選択されたものを濃くする
-            if (status === '空席あり') document.getElementById('btn-status-open').classList.add('bg-emerald-500', 'text-white');
-            if (status === '残りわずか') document.getElementById('btn-status-few').classList.add('bg-amber-500', 'text-white');
-            if (status === '満席') document.getElementById('btn-status-full').classList.add('bg-red-500', 'text-white');
+            const activeButton = document.getElementById(buttonMap[status]);
+
+            if (!activeButton) return;
+
+            activeButton.classList.add("status-button-active", "text-white");
+
+            if (status === "open") activeButton.classList.add("bg-emerald-600");
+            if (status === "few") activeButton.classList.add("bg-amber-600");
+            if (status === "full") activeButton.classList.add("bg-red-600");
+            if (status === "closed") activeButton.classList.add("bg-slate-700");
         }
 
-        // ==========================================
-        // 日付ナビゲーション機能
-        // ==========================================
         function changeDate(offset) {
             targetDate.setDate(targetDate.getDate() + offset);
             updateDateDisplay();
@@ -139,142 +451,320 @@
             updateDateDisplay();
         }
 
-        function updateDateDisplay() {
-            const yyyy = targetDate.getFullYear();
-            const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(targetDate.getDate()).padStart(2, '0');
-            const days = ['日', '月', '火', '水', '木', '金', '土'];
-            const dayStr = days[targetDate.getDay()];
-            
-            document.getElementById('display-date').innerText = `${yyyy}/${mm}/${dd} (${dayStr})`;
-            
-            fetchReservations(`${yyyy}-${mm}-${dd}`);
+        function jumpToDate(value) {
+            if (!value) return;
+
+            targetDate = new Date(`${value}T00:00:00`);
+            updateDateDisplay();
         }
 
-        // ==========================================
-        // 予約データ取得・表示機能
-        // ==========================================
-        async function fetchReservations(dateString) {
-            const listEl = document.getElementById('reservation-list');
-            listEl.innerHTML = '<p class="text-center text-slate-400 py-8 text-sm animate-pulse">読み込み中...</p>';
+        function updateDateDisplay() {
+            const dateString = formatDate(targetDate);
 
-            const { data, error } = await db
-                .from('izakaya_reservations')
-                .select('*')
-                .eq('reserve_date', dateString)
-                .order('reserve_time', { ascending: true }); // 時間順に並べる
+            document.getElementById("display-date").innerText = formatDisplayDate(targetDate);
+            document.getElementById("date-picker").value = dateString;
 
-            if (error) {
-                listEl.innerHTML = `<p class="text-center text-red-500 py-8">取得エラー: ${error.message}</p>`;
-                return;
+            fetchReservations(dateString);
+        }
+
+        async function fetchReservations(dateString = formatDate(targetDate)) {
+            const listEl = document.getElementById("reservation-list");
+
+            listEl.innerHTML =
+                '<p class="text-center text-slate-400 py-8 text-sm animate-pulse">読み込み中...</p>';
+
+            try {
+                const data = await apiFetch(`/api/admin/day?date=${encodeURIComponent(dateString)}`, {
+                    method: "GET",
+                    headers: adminHeaders()
+                });
+
+                currentReservations = data.reservations || [];
+
+                document.getElementById("daily-count").innerText = data.summary?.count || 0;
+                document.getElementById("daily-guests").innerText = data.summary?.guests || 0;
+                document.getElementById("daily-pending").innerText = data.summary?.pending || 0;
+
+                renderReservations();
+
+            } catch (err) {
+                console.error("予約取得エラー:", err);
+
+                listEl.innerHTML =
+                    `<p class="text-center text-red-500 py-8 text-sm">取得エラー: ${err.message}</p>`;
+            }
+        }
+
+        function setStatusFilter(filter) {
+            statusFilter = filter;
+
+            document.querySelectorAll(".filter-btn").forEach(btn => {
+                btn.classList.remove("bg-slate-900", "text-white");
+                btn.classList.add("bg-slate-100", "text-slate-600");
+            });
+
+            const active = document.getElementById(`filter-${filter}`);
+
+            if (active) {
+                active.classList.remove("bg-slate-100", "text-slate-600");
+                active.classList.add("bg-slate-900", "text-white");
             }
 
-            renderReservations(data);
+            renderReservations();
         }
 
-        function renderReservations(reservations) {
-            const listEl = document.getElementById('reservation-list');
-            const countEl = document.getElementById('daily-count');
-            const guestsEl = document.getElementById('daily-guests');
+        function filteredReservations() {
+            if (statusFilter === "all") {
+                return currentReservations;
+            }
 
-            if (reservations.length === 0) {
+            if (statusFilter === "active") {
+                return currentReservations.filter(res =>
+                    ["pending", "confirmed"].includes(res.status)
+                );
+            }
+
+            if (statusFilter === "cancelled") {
+                return currentReservations.filter(res =>
+                    ["cancelled_customer", "cancelled_shop"].includes(res.status)
+                );
+            }
+
+            return currentReservations.filter(res => res.status === statusFilter);
+        }
+
+        function renderReservations() {
+            const listEl = document.getElementById("reservation-list");
+            const reservations = filteredReservations();
+
+            if (!reservations.length) {
                 listEl.innerHTML = `
                     <div class="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-400 shadow-sm">
                         <div class="text-4xl mb-2">🍃</div>
-                        <p>この日の予約はありません</p>
-                    </div>`;
-                countEl.innerText = 0;
-                guestsEl.innerText = 0;
+                        <p>表示対象の予約はありません</p>
+                    </div>
+                `;
                 return;
             }
 
-            // 統計情報の更新
-            countEl.innerText = reservations.length;
-            guestsEl.innerText = reservations.reduce((sum, res) => sum + res.party_size, 0);
-
-            // リストの描画
             listEl.innerHTML = reservations.map(res => {
-                // ステータスに応じた色分け
-                let statusColor = "bg-slate-200 text-slate-600";
-                if (res.status === '仮予約') statusColor = "bg-amber-100 text-amber-700 border border-amber-300";
-                if (res.status === '確定') statusColor = "bg-emerald-100 text-emerald-700 border border-emerald-300";
-                if (res.status === 'キャンセル') statusColor = "bg-slate-100 text-slate-400 strike-through";
+                const customer = normalizeCustomer(res.customer);
+                const statusLabel = STATUS_LABELS[res.status] || res.status;
+                const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
 
-                // こだわり条件のタグ化（JSON/配列前提）
-                let prefsHtml = '';
-                if (res.preferences && res.preferences.length > 0) {
-                    prefsHtml = res.preferences.map(p => `<span class="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full">${p}</span>`).join(' ');
-                }
+                const prefsHtml =
+                    Array.isArray(res.preferences) && res.preferences.length
+                        ? res.preferences.map(p =>
+                            `<span class="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full">${escapeHtml(p)}</span>`
+                        ).join(" ")
+                        : '<span class="text-[10px] text-slate-300">好みなし</span>';
 
-                // アクションボタン（仮予約なら「承認/拒否」、確定なら「キャンセル処理」など）
-                let actionButtons = '';
-                if (res.status === '仮予約') {
-                    actionButtons = `
-                        <button onclick="changeReservationStatus(${res.id}, '確定')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs shadow-sm transition">
-                            ✅ 予約を確定する
-                        </button>
-                        <button onclick="changeReservationStatus(${res.id}, 'キャンセル')" class="px-4 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-2 rounded-lg text-xs transition">
-                            ❌ お断り
-                        </button>
-                    `;
-                } else if (res.status === '確定') {
-                    actionButtons = `
-                        <button onclick="changeReservationStatus(${res.id}, 'キャンセル')" class="w-full bg-red-50 text-red-600 border border-red-200 font-bold py-2 rounded-lg text-xs hover:bg-red-100 transition">
-                            顧客キャンセルとして処理
-                        </button>
-                    `;
-                }
+                const customerStatus = customer?.status || "new";
+                const customerStatusLabel = CUSTOMER_STATUS_LABELS[customerStatus] || customerStatus;
+
+                const memoHtml = customer?.memo
+                    ? `<p class="mt-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">📝 ${escapeHtml(customer.memo)}</p>`
+                    : "";
+
+                const noteHtml = res.customer_note
+                    ? `<p class="mt-2 text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">要望: ${escapeHtml(res.customer_note)}</p>`
+                    : "";
+
+                const cancelReasonHtml = res.cancel_reason
+                    ? `<p class="mt-2 text-xs text-slate-400">キャンセル理由: ${escapeHtml(res.cancel_reason)}</p>`
+                    : "";
+
+                const cardOpacity =
+                    ["cancelled_customer", "cancelled_shop"].includes(res.status)
+                        ? "opacity-60"
+                        : "";
 
                 return `
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 relative overflow-hidden ${res.status === 'キャンセル' ? 'opacity-50' : ''}">
-                    <div class="absolute top-4 right-4 text-[10px] px-2 py-1 rounded font-bold ${statusColor}">
-                        ${res.status}
-                    </div>
-
-                    <div class="flex items-start gap-4 mb-3">
-                        <div class="bg-amber-50 text-amber-800 rounded-xl p-2 text-center min-w-[60px] border border-amber-100">
-                            <div class="text-xs font-bold">START</div>
-                            <div class="text-lg font-black tracking-tighter">${res.reserve_time}</div>
+                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 relative overflow-hidden ${cardOpacity}">
+                        <div class="absolute top-4 right-4 text-[10px] px-2 py-1 rounded font-bold ${statusBadgeClass(res.status)}">
+                            ${statusLabel}
                         </div>
-                        <div>
-                            <h3 class="text-base font-bold text-slate-800">${res.line_name} 様</h3>
-                            <p class="text-xs text-slate-500 mt-1">
-                                👤 ${res.party_size}名 / 🪑 ${res.seat_type || '指定なし'} / ${res.reserve_type}
-                            </p>
-                            <div class="mt-2 flex flex-wrap gap-1">
-                                ${prefsHtml}
+
+                        <div class="flex items-start gap-4 mb-3 pr-20">
+                            <div class="bg-amber-50 text-amber-800 rounded-xl p-2 text-center min-w-[64px] border border-amber-100">
+                                <div class="text-xs font-bold">START</div>
+                                <div class="text-lg font-black tracking-tighter">${formatTime(res.reserve_time)}</div>
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <h3 class="text-base font-bold text-slate-800">
+                                        ${escapeHtml(res.line_name || "名前未取得")} 様
+                                    </h3>
+
+                                    <button onclick="copyText('${escapeJs(res.line_name || "")}', '名前')" class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-full">
+                                        名前コピー
+                                    </button>
+                                </div>
+
+                                <p class="text-xs text-slate-500 mt-1">
+                                    👤 ${res.party_size}名 / 🪑 ${seatLabel} / ${res.source || "liff"}
+                                </p>
+
+                                <p class="text-[10px] text-slate-400 mt-1">
+                                    顧客: ${customerStatusLabel}
+                                    / 来店 ${customer?.visit_count ?? 0}回
+                                    / 無断 ${customer?.no_show_count ?? 0}回
+                                </p>
+
+                                <div class="mt-2 flex flex-wrap gap-1">
+                                    ${prefsHtml}
+                                </div>
+
+                                ${noteHtml}
+                                ${memoHtml}
+                                ${cancelReasonHtml}
                             </div>
                         </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100">
+                            ${renderActionButtons(res)}
+                        </div>
                     </div>
-                    
-                    <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                        ${actionButtons}
-                    </div>
-                </div>
                 `;
-            }).join('');
+            }).join("");
         }
 
-        // ==========================================
-        // 個別予約のステータス変更機能
-        // ==========================================
-        async function changeReservationStatus(id, newStatus) {
-            if (!confirm(`この予約を「${newStatus}」に変更しますか？`)) return;
+        function renderActionButtons(res) {
+            if (res.status === "pending") {
+                return `
+                    <button onclick="changeReservationStatus('${res.id}', 'confirmed')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs shadow-sm transition">
+                        ✅ 予約確定
+                    </button>
 
-            const { error } = await db
-                .from('izakaya_reservations')
-                .update({ status: newStatus })
-                .eq('id', id);
+                    <button onclick="changeReservationStatus('${res.id}', 'cancelled_shop')" class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-2 rounded-lg text-xs transition">
+                        ❌ お断り
+                    </button>
 
-            if (error) {
-                alert('エラーが発生しました: ' + error.message);
-            } else {
-                // 更新完了後、現在の表示日付でリストを再取得
-                const yyyy = targetDate.getFullYear();
-                const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-                const dd = String(targetDate.getDate()).padStart(2, '0');
-                fetchReservations(`${yyyy}-${mm}-${dd}`);
+                    <button onclick="changeReservationStatus('${res.id}', 'cancelled_customer')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-2 rounded-lg text-xs transition">
+                        顧客キャンセル
+                    </button>
+
+                    <button onclick="openLineManager()" class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-2 rounded-lg text-xs transition">
+                        LINE管理
+                    </button>
+                `;
             }
+
+            if (res.status === "confirmed") {
+                return `
+                    <button onclick="changeReservationStatus('${res.id}', 'completed')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs shadow-sm transition">
+                        来店済み
+                    </button>
+
+                    <button onclick="changeReservationStatus('${res.id}', 'cancelled_customer')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-2 rounded-lg text-xs transition">
+                        顧客キャンセル
+                    </button>
+
+                    <button onclick="changeReservationStatus('${res.id}', 'no_show')" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg text-xs transition">
+                        無断キャンセル
+                    </button>
+
+                    <button onclick="openLineManager()" class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-2 rounded-lg text-xs transition">
+                        LINE管理
+                    </button>
+                `;
+            }
+
+            if (["cancelled_customer", "cancelled_shop"].includes(res.status)) {
+                return `
+                    <button onclick="changeReservationStatus('${res.id}', 'pending')" class="col-span-2 md:col-span-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold py-2 rounded-lg text-xs transition">
+                        仮予約に戻す
+                    </button>
+
+                    <button onclick="openLineManager()" class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-2 rounded-lg text-xs transition">
+                        LINE管理
+                    </button>
+                `;
+            }
+
+            return `
+                <button onclick="openLineManager()" class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-2 rounded-lg text-xs transition">
+                    LINE管理
+                </button>
+            `;
+        }
+
+        async function changeReservationStatus(reservationId, newStatus) {
+            const label = STATUS_LABELS[newStatus] || newStatus;
+
+            let reason = null;
+
+            if (newStatus === "cancelled_shop") {
+                reason = prompt("店舗キャンセル・お断り理由を入力してください。", "満席のため");
+                if (reason === null) return;
+            }
+
+            if (newStatus === "cancelled_customer") {
+                reason = prompt("顧客キャンセル理由を入力してください。", "顧客都合");
+                if (reason === null) return;
+            }
+
+            if (newStatus === "no_show") {
+                reason = prompt("無断キャンセルのメモを入力してください。", "連絡なし");
+                if (reason === null) return;
+            }
+
+            if (!confirm(`この予約を「${label}」に変更しますか？`)) {
+                return;
+            }
+
+            try {
+                await apiFetch("/api/admin/reservations/status", {
+                    method: "POST",
+                    headers: adminHeaders(),
+                    body: JSON.stringify({
+                        reservationId,
+                        status: newStatus,
+                        reason,
+                        actorId: "admin_dashboard"
+                    })
+                });
+
+                showToast(`予約を「${label}」に変更しました。`);
+                await fetchReservations();
+
+            } catch (err) {
+                console.error("予約ステータス変更エラー:", err);
+                alert("エラーが発生しました。\n" + err.message);
+            }
+        }
+
+        function copyText(text, label = "テキスト") {
+            if (!text) {
+                alert("コピーする内容がありません。");
+                return;
+            }
+
+            navigator.clipboard.writeText(text)
+                .then(() => showToast(`${label}をコピーしました。`))
+                .catch(() => alert("コピーに失敗しました。"));
+        }
+
+        function openLineManager() {
+            window.open("https://manager.line.biz/", "_blank", "noopener,noreferrer");
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function escapeJs(value) {
+            return String(value ?? "")
+                .replaceAll("\\", "\\\\")
+                .replaceAll("'", "\\'")
+                .replaceAll("\n", "\\n")
+                .replaceAll("\r", "");
         }
     </script>
 </body>
