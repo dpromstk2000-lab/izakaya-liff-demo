@@ -34,20 +34,32 @@
                 <p class="text-[10px] text-slate-400 mt-1">Pages Functions / iz_demo_ DB版</p>
             </div>
 
-            <div class="text-right">
-                <div class="text-xs text-slate-400">
-                    現在:
-                    <span id="current-shop-status" class="font-bold text-white">取得中...</span>
+            <div class="text-right flex items-center gap-3">
+                <div>
+                    <div class="text-xs text-slate-400">
+                        現在:
+                        <span id="current-shop-status" class="font-bold text-white">取得中...</span>
+                    </div>
+                    <button onclick="resetAdminToken()" class="text-[10px] text-slate-400 underline mt-1">
+                        管理認証をリセット
+                    </button>
                 </div>
-                <button onclick="resetAdminToken()" class="text-[10px] text-slate-400 underline mt-1">
-                    管理認証をリセット
+
+                <button
+                    onclick="openSettingsPanel()"
+                    class="bg-white/10 hover:bg-white/20 border border-white/10 text-white rounded-xl px-3 py-2 text-sm font-bold active:scale-95 transition"
+                    title="店舗設定"
+                >
+                    ⚙
+                    <span class="hidden sm:inline">店舗設定</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 rounded-xl shadow-lg text-sm font-bold bg-slate-900 text-white"></div>
+    <div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-[150] px-4 py-3 rounded-xl shadow-lg text-sm font-bold bg-slate-900 text-white"></div>
 
+    <!-- 管理認証 -->
     <section id="auth-panel" class="max-w-md mx-auto mt-8 p-5 bg-white rounded-2xl shadow-sm border border-slate-200 hidden">
         <h2 class="text-lg font-bold text-slate-800 mb-2">管理者認証</h2>
         <p class="text-xs text-slate-500 mb-4">
@@ -68,6 +80,179 @@
             管理画面を開く
         </button>
     </section>
+
+    <!-- 右上⚙ 店舗設定パネル -->
+    <div id="settings-panel" class="hidden fixed inset-0 z-[120]">
+        <div class="absolute inset-0 bg-black/50" onclick="closeSettingsPanel()"></div>
+
+        <aside class="absolute right-0 top-0 h-full w-full sm:max-w-2xl bg-slate-100 shadow-2xl overflow-y-auto" id="settings-panel-content">
+            <div class="sticky top-0 z-10 bg-slate-900 text-white p-4 shadow-md">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-bold">⚙ 店舗設定</h2>
+                        <p class="text-[10px] text-slate-400 mt-1">
+                            通常営業時間・定休日・臨時休業・特別営業日
+                        </p>
+                    </div>
+
+                    <button
+                        onclick="closeSettingsPanel()"
+                        class="bg-white/10 hover:bg-white/20 rounded-full w-10 h-10 font-bold active:scale-95 transition"
+                    >
+                        ×
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-4 space-y-5">
+
+                <!-- 通常営業時間・定休日 -->
+                <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-start gap-4 mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                                通常営業時間・定休日
+                            </h3>
+                            <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                                通常の曜日別設定です。特別日設定がある日は、特別日が優先されます。
+                            </p>
+                        </div>
+
+                        <button onclick="fetchBusinessHours()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                            🔄 更新
+                        </button>
+                    </div>
+
+                    <div id="business-hours-list" class="space-y-3">
+                        <p class="text-center text-slate-400 text-xs py-4">読み込み中...</p>
+                    </div>
+
+                    <button
+                        id="btn-save-business-hours"
+                        onclick="saveBusinessHours()"
+                        class="w-full mt-4 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl text-xs active:scale-95 transition"
+                    >
+                        通常営業時間を保存する
+                    </button>
+                </section>
+
+                <!-- 休業日・特別営業日 -->
+                <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-start gap-4 mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                                直近3か月の休業日・特別営業日
+                            </h3>
+                            <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                                年末年始、臨時休業、貸切営業、特別営業時間を設定できます。休業日は顧客LIFFの予約カレンダーで選択不可になります。
+                            </p>
+                        </div>
+
+                        <button onclick="fetchSpecialDays()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                            🔄 更新
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">対象日</label>
+                                <input
+                                    id="special-day-date"
+                                    type="date"
+                                    class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
+                                >
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">種別</label>
+                                <select
+                                    id="special-day-type"
+                                    onchange="toggleSpecialDayType()"
+                                    class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
+                                >
+                                    <option value="closed">臨時休業</option>
+                                    <option value="open">特別営業</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1">メモ</label>
+                                <input
+                                    id="special-day-note"
+                                    type="text"
+                                    class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
+                                    placeholder="例：年末年始休み / 貸切営業"
+                                >
+                            </div>
+                        </div>
+
+                        <div id="special-open-fields" class="hidden space-y-3">
+                            <div class="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">開店</label>
+                                    <input id="special-open-time" type="time" value="17:00" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">閉店</label>
+                                    <input id="special-close-time" type="time" value="23:00" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">L.O.</label>
+                                    <input id="special-last-order-time" type="time" value="22:30" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">時間刻み</label>
+                                    <select id="special-slot-interval" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none">
+                                        <option value="">通常設定</option>
+                                        <option value="15">15分</option>
+                                        <option value="30" selected>30分</option>
+                                        <option value="60">60分</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">最大人数</label>
+                                    <input id="special-max-guests" type="number" min="0" value="20" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 mb-1">最大組数</label>
+                                    <input id="special-max-groups" type="number" min="0" value="8" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <button id="btn-save-special-day" onclick="saveSpecialDay()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs active:scale-95 transition">
+                                保存する
+                            </button>
+
+                            <button onclick="clearSpecialDayForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-3 rounded-xl text-xs active:scale-95 transition">
+                                入力クリア
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-5">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-xs font-bold text-slate-500">登録済みの特別日</p>
+                            <p id="special-days-range" class="text-[10px] text-slate-400">読み込み中...</p>
+                        </div>
+
+                        <div id="special-days-list" class="space-y-2">
+                            <p class="text-center text-slate-400 text-xs py-4">読み込み中...</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </aside>
+    </div>
 
     <main id="admin-app" class="hidden max-w-5xl mx-auto p-4 space-y-6 mt-4">
 
@@ -105,158 +290,6 @@
             </p>
         </section>
 
-        <!-- 休業日・特別営業日 -->
-        <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <div class="flex justify-between items-start gap-4 mb-4">
-                <div>
-                    <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
-                        直近3か月の休業日・特別営業日設定
-                    </h2>
-                    <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                        年末年始、臨時休業、貸切営業、特別営業時間を設定できます。休業日は顧客LIFFの予約カレンダーで選択不可になります。
-                    </p>
-                </div>
-
-                <button onclick="fetchSpecialDays()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                    🔄 更新
-                </button>
-            </div>
-
-            <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">対象日</label>
-                        <input
-                            id="special-day-date"
-                            type="date"
-                            class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
-                        >
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">種別</label>
-                        <select
-                            id="special-day-type"
-                            onchange="toggleSpecialDayType()"
-                            class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
-                        >
-                            <option value="closed">臨時休業</option>
-                            <option value="open">特別営業</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">メモ</label>
-                        <input
-                            id="special-day-note"
-                            type="text"
-                            class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
-                            placeholder="例：年末年始休み / 貸切営業"
-                        >
-                    </div>
-                </div>
-
-                <div id="special-open-fields" class="hidden space-y-3">
-                    <div class="grid grid-cols-3 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">開店</label>
-                            <input
-                                id="special-open-time"
-                                type="time"
-                                value="17:00"
-                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
-                            >
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">閉店</label>
-                            <input
-                                id="special-close-time"
-                                type="time"
-                                value="23:00"
-                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
-                            >
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">L.O.</label>
-                            <input
-                                id="special-last-order-time"
-                                type="time"
-                                value="22:30"
-                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
-                            >
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-3 gap-3">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">時間刻み</label>
-                            <select
-                                id="special-slot-interval"
-                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
-                            >
-                                <option value="">通常設定</option>
-                                <option value="15">15分</option>
-                                <option value="30" selected>30分</option>
-                                <option value="60">60分</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">最大人数</label>
-                            <input
-                                id="special-max-guests"
-                                type="number"
-                                min="0"
-                                value="20"
-                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
-                            >
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">最大組数</label>
-                            <input
-                                id="special-max-groups"
-                                type="number"
-                                min="0"
-                                value="8"
-                                class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none"
-                            >
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <button
-                        onclick="saveSpecialDay()"
-                        id="btn-save-special-day"
-                        class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl text-xs active:scale-95 transition"
-                    >
-                        保存する
-                    </button>
-
-                    <button
-                        onclick="clearSpecialDayForm()"
-                        class="bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-3 rounded-xl text-xs active:scale-95 transition"
-                    >
-                        入力クリア
-                    </button>
-                </div>
-            </div>
-
-            <div class="mt-5">
-                <div class="flex justify-between items-center mb-2">
-                    <p class="text-xs font-bold text-slate-500">登録済みの特別日</p>
-                    <p id="special-days-range" class="text-[10px] text-slate-400">読み込み中...</p>
-                </div>
-
-                <div id="special-days-list" class="space-y-2">
-                    <p class="text-center text-slate-400 text-xs py-4">読み込み中...</p>
-                </div>
-            </div>
-        </section>
-
         <!-- リマインド・通知 -->
         <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
@@ -275,25 +308,14 @@
                     <label class="text-xs font-bold text-slate-500">対象日</label>
 
                     <div class="grid grid-cols-2 gap-2">
-                        <input
-                            id="reminder-target-date"
-                            type="date"
-                            class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500"
-                        >
+                        <input id="reminder-target-date" type="date" class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500">
 
-                        <button
-                            onclick="setTomorrowReminderDate()"
-                            class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold rounded-xl text-xs active:scale-95 transition"
-                        >
+                        <button onclick="setTomorrowReminderDate()" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold rounded-xl text-xs active:scale-95 transition">
                             明日に設定
                         </button>
                     </div>
 
-                    <button
-                        id="btn-enqueue-reminders"
-                        onclick="enqueueReminders()"
-                        class="mt-2 bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-3 rounded-xl text-xs shadow-sm active:scale-95 transition"
-                    >
+                    <button id="btn-enqueue-reminders" onclick="enqueueReminders()" class="mt-2 bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-3 rounded-xl text-xs shadow-sm active:scale-95 transition">
                         ⏰ 前日リマインド作成
                     </button>
                 </div>
@@ -312,11 +334,7 @@
                         </p>
                     </div>
 
-                    <button
-                        id="btn-send-notifications"
-                        onclick="sendQueuedNotifications()"
-                        class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-3 rounded-xl text-xs shadow-sm active:scale-95 transition"
-                    >
+                    <button id="btn-send-notifications" onclick="sendQueuedNotifications()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-3 rounded-xl text-xs shadow-sm active:scale-95 transition">
                         📣 通知送信
                     </button>
                 </div>
@@ -440,11 +458,22 @@
             blocked: "ブロック"
         };
 
+        const WEEKDAYS = [
+            { dow: 0, label: "日", full: "日曜日" },
+            { dow: 1, label: "月", full: "月曜日" },
+            { dow: 2, label: "火", full: "火曜日" },
+            { dow: 3, label: "水", full: "水曜日" },
+            { dow: 4, label: "木", full: "木曜日" },
+            { dow: 5, label: "金", full: "金曜日" },
+            { dow: 6, label: "土", full: "土曜日" }
+        ];
+
         let targetDate = new Date();
         let adminToken = localStorage.getItem("iz_demo_admin_token") || "";
         let currentReservations = [];
         let statusFilter = "all";
         let currentSpecialDays = [];
+        let currentBusinessHours = [];
 
         window.addEventListener("DOMContentLoaded", () => {
             setTomorrowReminderDate();
@@ -458,7 +487,6 @@
 
             showAdminApp();
             fetchShopStatus();
-            fetchSpecialDays();
             updateDateDisplay();
         });
 
@@ -485,7 +513,6 @@
 
             showAdminApp();
             fetchShopStatus();
-            fetchSpecialDays();
             updateDateDisplay();
         }
 
@@ -582,55 +609,229 @@
             }
         }
 
+        function openSettingsPanel() {
+            if (!adminToken) {
+                alert("先に管理者認証をしてください。");
+                showAuthPanel();
+                return;
+            }
+
+            document.getElementById("settings-panel").classList.remove("hidden");
+
+            fetchBusinessHours();
+            fetchSpecialDays();
+        }
+
+        function closeSettingsPanel() {
+            document.getElementById("settings-panel").classList.add("hidden");
+        }
+
+        async function fetchBusinessHours() {
+            const listEl = document.getElementById("business-hours-list");
+
+            listEl.innerHTML = '<p class="text-center text-slate-400 text-xs py-4 animate-pulse">読み込み中...</p>';
+
+            try {
+                const data = await apiFetch("/api/admin/business-hours", {
+                    method: "GET",
+                    headers: adminHeaders()
+                });
+
+                const rows = data.businessHours || [];
+                const map = new Map(rows.map(row => [Number(row.dow), row]));
+
+                currentBusinessHours = WEEKDAYS.map(day => {
+                    return map.get(day.dow) || {
+                        dow: day.dow,
+                        is_closed: false,
+                        open_time: "17:00:00",
+                        close_time: "23:00:00",
+                        last_order_time: "22:30:00",
+                        slot_interval_minutes: 30,
+                        max_guests_per_slot: 20,
+                        max_groups_per_slot: 8,
+                        note: ""
+                    };
+                });
+
+                renderBusinessHours();
+
+            } catch (err) {
+                console.error("通常営業時間取得エラー:", err);
+                listEl.innerHTML = `<p class="text-center text-red-500 text-xs py-4">取得エラー: ${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        function renderBusinessHours() {
+            const listEl = document.getElementById("business-hours-list");
+
+            listEl.innerHTML = currentBusinessHours.map(row => {
+                const dow = Number(row.dow);
+                const weekday = WEEKDAYS.find(day => day.dow === dow);
+                const checked = row.is_closed ? "checked" : "";
+
+                return `
+                    <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                        <div class="flex justify-between items-center gap-3 mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold">
+                                    ${weekday?.label || dow}
+                                </div>
+                                <div>
+                                    <p class="font-bold text-sm text-slate-700">${weekday?.full || ""}</p>
+                                    <p class="text-[10px] text-slate-400">通常営業設定</p>
+                                </div>
+                            </div>
+
+                            <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
+                                <input
+                                    id="bh-closed-${dow}"
+                                    type="checkbox"
+                                    ${checked}
+                                    onchange="updateBusinessHourRowState(${dow})"
+                                    class="w-4 h-4"
+                                >
+                                定休日
+                            </label>
+                        </div>
+
+                        <div id="bh-fields-${dow}" class="space-y-3">
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">開店</label>
+                                    <input id="bh-open-${dow}" type="time" value="${formatTime(row.open_time) || "17:00"}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">閉店</label>
+                                    <input id="bh-close-${dow}" type="time" value="${formatTime(row.close_time) || "23:00"}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">L.O.</label>
+                                    <input id="bh-last-${dow}" type="time" value="${formatTime(row.last_order_time) || "22:30"}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">時間刻み</label>
+                                    <select id="bh-slot-${dow}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                                        <option value="15" ${Number(row.slot_interval_minutes) === 15 ? "selected" : ""}>15分</option>
+                                        <option value="30" ${Number(row.slot_interval_minutes || 30) === 30 ? "selected" : ""}>30分</option>
+                                        <option value="60" ${Number(row.slot_interval_minutes) === 60 ? "selected" : ""}>60分</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">最大人数</label>
+                                    <input id="bh-guests-${dow}" type="number" min="0" value="${row.max_guests_per_slot ?? 20}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">最大組数</label>
+                                    <input id="bh-groups-${dow}" type="number" min="0" value="${row.max_groups_per_slot ?? 8}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">メモ</label>
+                                <input id="bh-note-${dow}" type="text" value="${escapeHtml(row.note || "")}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white" placeholder="例：通常営業 / ランチなし">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+
+            WEEKDAYS.forEach(day => updateBusinessHourRowState(day.dow));
+        }
+
+        function updateBusinessHourRowState(dow) {
+            const checked = document.getElementById(`bh-closed-${dow}`)?.checked;
+            const fields = document.getElementById(`bh-fields-${dow}`);
+
+            if (!fields) return;
+
+            fields.classList.toggle("opacity-40", checked);
+            fields.classList.toggle("pointer-events-none", checked);
+        }
+
+        async function saveBusinessHours() {
+            const button = document.getElementById("btn-save-business-hours");
+
+            const hours = WEEKDAYS.map(day => {
+                const dow = day.dow;
+                const isClosed = document.getElementById(`bh-closed-${dow}`).checked;
+
+                return {
+                    dow,
+                    isClosed,
+                    openTime: isClosed ? null : document.getElementById(`bh-open-${dow}`).value,
+                    closeTime: isClosed ? null : document.getElementById(`bh-close-${dow}`).value,
+                    lastOrderTime: isClosed ? null : document.getElementById(`bh-last-${dow}`).value,
+                    slotIntervalMinutes: isClosed ? null : document.getElementById(`bh-slot-${dow}`).value,
+                    maxGuestsPerSlot: isClosed ? null : document.getElementById(`bh-guests-${dow}`).value,
+                    maxGroupsPerSlot: isClosed ? null : document.getElementById(`bh-groups-${dow}`).value,
+                    note: document.getElementById(`bh-note-${dow}`).value
+                };
+            });
+
+            for (const item of hours) {
+                if (!item.isClosed && (!item.openTime || !item.closeTime)) {
+                    alert(`${WEEKDAYS.find(day => day.dow === item.dow)?.full} の開店時間・閉店時間を入力してください。`);
+                    return;
+                }
+            }
+
+            if (!confirm("通常営業時間・定休日を保存しますか？")) {
+                return;
+            }
+
+            button.disabled = true;
+            button.innerText = "保存中...";
+
+            try {
+                const data = await apiFetch("/api/admin/business-hours/update", {
+                    method: "POST",
+                    headers: adminHeaders(),
+                    body: JSON.stringify({
+                        hours,
+                        actorId: "admin_dashboard"
+                    })
+                });
+
+                showToast(data.result?.message || "通常営業時間を保存しました。");
+                await fetchBusinessHours();
+
+            } catch (err) {
+                console.error("通常営業時間保存エラー:", err);
+                alert("通常営業時間を保存できませんでした。\n" + err.message);
+
+            } finally {
+                button.disabled = false;
+                button.innerText = "通常営業時間を保存する";
+            }
+        }
+
         function statusBadgeClass(status) {
-            if (status === "pending") {
-                return "bg-amber-100 text-amber-700 border border-amber-300";
-            }
-
-            if (status === "confirmed") {
-                return "bg-emerald-100 text-emerald-700 border border-emerald-300";
-            }
-
-            if (status === "completed") {
-                return "bg-blue-100 text-blue-700 border border-blue-300";
-            }
-
-            if (status === "no_show") {
-                return "bg-red-100 text-red-700 border border-red-300";
-            }
-
-            if (status === "cancelled_customer" || status === "cancelled_shop") {
-                return "bg-slate-100 text-slate-400 border border-slate-200";
-            }
-
+            if (status === "pending") return "bg-amber-100 text-amber-700 border border-amber-300";
+            if (status === "confirmed") return "bg-emerald-100 text-emerald-700 border border-emerald-300";
+            if (status === "completed") return "bg-blue-100 text-blue-700 border border-blue-300";
+            if (status === "no_show") return "bg-red-100 text-red-700 border border-red-300";
+            if (status === "cancelled_customer" || status === "cancelled_shop") return "bg-slate-100 text-slate-400 border border-slate-200";
             return "bg-slate-200 text-slate-600";
         }
 
         function customerStatusBadgeClass(status) {
-            if (status === "vip") {
-                return "bg-purple-100 text-purple-700 border-purple-200";
-            }
-
-            if (status === "regular") {
-                return "bg-emerald-100 text-emerald-700 border-emerald-200";
-            }
-
-            if (status === "caution") {
-                return "bg-amber-100 text-amber-700 border-amber-200";
-            }
-
-            if (status === "blocked") {
-                return "bg-red-100 text-red-700 border-red-200";
-            }
-
+            if (status === "vip") return "bg-purple-100 text-purple-700 border-purple-200";
+            if (status === "regular") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+            if (status === "caution") return "bg-amber-100 text-amber-700 border-amber-200";
+            if (status === "blocked") return "bg-red-100 text-red-700 border-red-200";
             return "bg-slate-100 text-slate-600 border-slate-200";
         }
 
         function normalizeCustomer(customer) {
-            if (Array.isArray(customer)) {
-                return customer[0] || null;
-            }
-
+            if (Array.isArray(customer)) return customer[0] || null;
             return customer || null;
         }
 
@@ -702,7 +903,6 @@
             });
 
             const activeButton = document.getElementById(buttonMap[status]);
-
             if (!activeButton) return;
 
             activeButton.classList.add("status-button-active", "text-white");
@@ -739,7 +939,6 @@
                 });
 
                 currentSpecialDays = data.specialDays || [];
-
                 rangeEl.innerText = `${data.from || "-"} 〜 ${data.to || "-"}`;
 
                 renderSpecialDays();
@@ -789,17 +988,11 @@
                         </div>
 
                         <div class="flex flex-col gap-2 shrink-0">
-                            <button
-                                onclick="editSpecialDay('${escapeJs(day.target_date)}')"
-                                class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold px-3 py-1.5 rounded-lg text-[10px]"
-                            >
+                            <button onclick="editSpecialDay('${escapeJs(day.target_date)}')" class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold px-3 py-1.5 rounded-lg text-[10px]">
                                 編集
                             </button>
 
-                            <button
-                                onclick="deleteSpecialDay('${escapeJs(day.target_date)}')"
-                                class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold px-3 py-1.5 rounded-lg text-[10px]"
-                            >
+                            <button onclick="deleteSpecialDay('${escapeJs(day.target_date)}')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold px-3 py-1.5 rounded-lg text-[10px]">
                                 削除
                             </button>
                         </div>
@@ -819,7 +1012,6 @@
             document.getElementById("special-day-date").value = day.target_date;
             document.getElementById("special-day-type").value = day.is_closed ? "closed" : "open";
             document.getElementById("special-day-note").value = day.note || "";
-
             document.getElementById("special-open-time").value = formatTime(day.open_time) || "17:00";
             document.getElementById("special-close-time").value = formatTime(day.close_time) || "23:00";
             document.getElementById("special-last-order-time").value = formatTime(day.last_order_time) || "22:30";
@@ -829,7 +1021,7 @@
 
             toggleSpecialDayType();
             showToast("編集内容をフォームに読み込みました。");
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            document.getElementById("settings-panel-content").scrollTo({ top: 0, behavior: "smooth" });
         }
 
         function clearSpecialDayForm() {
@@ -847,7 +1039,6 @@
 
         async function saveSpecialDay() {
             const button = document.getElementById("btn-save-special-day");
-
             const targetDate = document.getElementById("special-day-date").value;
             const type = document.getElementById("special-day-type").value;
             const isClosed = type === "closed";
@@ -1230,19 +1421,13 @@
                         <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 mt-3">
                             <div class="flex items-center justify-between gap-2 mb-2">
                                 <p class="text-xs font-bold text-slate-500">顧客管理</p>
-                                <button
-                                    onclick="saveCustomerAdmin('${escapeJs(res.id)}', '${escapeJs(res.line_user_id || "")}')"
-                                    class="text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded-full active:scale-95 transition"
-                                >
+                                <button onclick="saveCustomerAdmin('${escapeJs(res.id)}', '${escapeJs(res.line_user_id || "")}')" class="text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded-full active:scale-95 transition">
                                     保存
                                 </button>
                             </div>
 
                             <div class="grid grid-cols-2 gap-2 mb-2">
-                                <select
-                                    id="customer-status-${escapeHtml(res.id)}"
-                                    class="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white outline-none"
-                                >
+                                <select id="customer-status-${escapeHtml(res.id)}" class="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white outline-none">
                                     <option value="new" ${customerStatus === "new" ? "selected" : ""}>新規</option>
                                     <option value="regular" ${customerStatus === "regular" ? "selected" : ""}>常連</option>
                                     <option value="vip" ${customerStatus === "vip" ? "selected" : ""}>VIP</option>
@@ -1250,20 +1435,12 @@
                                     <option value="blocked" ${customerStatus === "blocked" ? "selected" : ""}>ブロック</option>
                                 </select>
 
-                                <button
-                                    onclick="openLineManager()"
-                                    class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-2 rounded-lg text-xs transition"
-                                >
+                                <button onclick="openLineManager()" class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-2 rounded-lg text-xs transition">
                                     LINE管理
                                 </button>
                             </div>
 
-                            <textarea
-                                id="customer-memo-${escapeHtml(res.id)}"
-                                rows="2"
-                                class="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white outline-none"
-                                placeholder="顧客メモ：好み、注意点、個室希望など"
-                            >${escapeHtml(customerMemo)}</textarea>
+                            <textarea id="customer-memo-${escapeHtml(res.id)}" rows="2" class="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white outline-none" placeholder="顧客メモ：好み、注意点、個室希望など">${escapeHtml(customerMemo)}</textarea>
                         </div>
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100">
@@ -1345,7 +1522,6 @@
 
             const status = statusEl?.value || "new";
             const memo = memoEl?.value || "";
-
             const label = CUSTOMER_STATUS_LABELS[status] || status;
 
             if (status === "blocked") {
