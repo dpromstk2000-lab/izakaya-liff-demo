@@ -21,11 +21,6 @@
             font-family: 'Noto Sans JP', sans-serif;
         }
 
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-        }
-
         .amber-gradient {
             background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
         }
@@ -217,11 +212,6 @@
     </footer>
 
     <script>
-        // =========================
-        // 居酒屋DPRO LIFF 顧客画面
-        // Cloudflare Pages Functions 経由版
-        // =========================
-
         const LIFF_ID = "2010334558-3WGZGeu2";
         const API_BASE = "";
 
@@ -281,6 +271,87 @@
             return data;
         }
 
+        function cleanRedirectUrl() {
+            return window.location.href.split("#")[0];
+        }
+
+        function isIdTokenExpired() {
+            try {
+                const decoded = liff.getDecodedIDToken();
+
+                if (!decoded || !decoded.exp) {
+                    return true;
+                }
+
+                const now = Math.floor(Date.now() / 1000);
+
+                return decoded.exp <= now + 60;
+
+            } catch (err) {
+                console.warn("IDトークン確認エラー:", err);
+                return true;
+            }
+        }
+
+        async function getValidLineIdToken() {
+            if (!liff.isLoggedIn()) {
+                liff.login({
+                    redirectUri: cleanRedirectUrl()
+                });
+                throw new Error("LINEログインをやり直します。もう一度お試しください。");
+            }
+
+            if (isIdTokenExpired()) {
+                alert("LINEログイン情報の有効期限が切れました。再ログインします。");
+
+                try {
+                    liff.logout();
+                } catch (err) {
+                    console.warn("LIFF logout skipped:", err);
+                }
+
+                liff.login({
+                    redirectUri: cleanRedirectUrl()
+                });
+
+                throw new Error("LINEログイン情報の有効期限が切れました。再ログイン後にもう一度お試しください。");
+            }
+
+            const idToken = liff.getIDToken();
+
+            if (!idToken) {
+                throw new Error("LINE IDトークンを取得できませんでした。LIFFのスコープ設定を確認してください。");
+            }
+
+            return idToken;
+        }
+
+        function handleAuthExpiredError(err) {
+            const message = err?.message || "";
+
+            if (
+                message.includes("IdToken expired") ||
+                message.includes("ID token expired") ||
+                message.includes("expired")
+            ) {
+                alert("LINEログイン情報の有効期限が切れました。再ログインします。");
+
+                try {
+                    liff.logout();
+                } catch (logoutErr) {
+                    console.warn("LIFF logout skipped:", logoutErr);
+                }
+
+                liff.login({
+                    redirectUri: cleanRedirectUrl()
+                });
+
+                return true;
+            }
+
+            return false;
+        }
+
         function switchTab(tab) {
             const resTab = document.getElementById("btn-reserve");
             const histTab = document.getElementById("btn-history");
@@ -313,7 +384,9 @@
                 await liff.init({ liffId: LIFF_ID });
 
                 if (!liff.isLoggedIn()) {
-                    liff.login();
+                    liff.login({
+                        redirectUri: cleanRedirectUrl()
+                    });
                     return;
                 }
 
@@ -449,15 +522,7 @@
                 '<p class="text-center text-stone-400 py-12 text-sm animate-pulse">照会中...</p>';
 
             try {
-                if (!liff.isLoggedIn()) {
-                    throw new Error("LINEログインが必要です");
-                }
-
-                const idToken = liff.getIDToken();
-
-                if (!idToken) {
-                    throw new Error("LINE IDトークンを取得できませんでした。LIFFのスコープ設定を確認してください。");
-                }
+                const idToken = await getValidLineIdToken();
 
                 const data = await apiFetch("/api/reservations/my", {
                     method: "GET",
@@ -511,6 +576,10 @@
             } catch (err) {
                 console.error("予約履歴取得エラー:", err);
 
+                if (handleAuthExpiredError(err)) {
+                    return;
+                }
+
                 listEl.innerHTML =
                     `<p class="text-center text-red-500 py-12 text-sm">エラー: ${err.message}</p>`;
             }
@@ -525,15 +594,7 @@
             submitBtn.innerText = "送信中...";
 
             try {
-                if (!liff.isLoggedIn()) {
-                    throw new Error("LINEログインが必要です");
-                }
-
-                const idToken = liff.getIDToken();
-
-                if (!idToken) {
-                    throw new Error("LINE IDトークンを取得できませんでした。LIFFのスコープ設定を確認してください。");
-                }
+                const idToken = await getValidLineIdToken();
 
                 const prefs = Array.from(
                     document.querySelectorAll('input[name="preferences"]:checked')
@@ -592,6 +653,11 @@
 
             } catch (err) {
                 console.error("送信エラー:", err);
+
+                if (handleAuthExpiredError(err)) {
+                    return;
+                }
+
                 alert("エラーが発生しました。\n" + err.message);
 
             } finally {
