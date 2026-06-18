@@ -94,6 +94,14 @@ export async function onRequest(context) {
       return await deleteSpecialDay(request, env);
     }
 
+    if (url.pathname === "/api/admin/business-hours" && request.method === "GET") {
+      return await getAdminBusinessHours(request, env);
+    }
+
+    if (url.pathname === "/api/admin/business-hours/update" && request.method === "POST") {
+      return await updateBusinessHours(request, env);
+    }
+
     return jsonResponse({
       ok: false,
       error: "Not found",
@@ -281,6 +289,10 @@ function normalizeNullableNumber(value) {
   }
 
   return number;
+}
+
+function normalizeBoolean(value) {
+  return value === true || value === "true" || value === 1 || value === "1";
 }
 
 // =========================================================
@@ -695,6 +707,78 @@ async function enqueueReminders(request, env) {
       body: JSON.stringify({
         p_shop_id: SHOP_ID,
         p_target_date: targetDate,
+        p_actor_id: body.actorId || "admin_dashboard",
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    result: Array.isArray(result) ? result[0] : result,
+  }, env);
+}
+
+// =========================================================
+// Business Hours Admin APIs
+// =========================================================
+
+async function getAdminBusinessHours(request, env) {
+  requireAdmin(request, env);
+
+  const data = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_business_hours?shop_id=eq.${SHOP_ID}&select=id,dow,is_closed,open_time,close_time,last_order_time,slot_interval_minutes,max_guests_per_slot,max_groups_per_slot,note,created_at,updated_at&order=dow.asc`
+  );
+
+  return jsonResponse({
+    ok: true,
+    businessHours: data || [],
+  }, env);
+}
+
+async function updateBusinessHours(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+
+  if (!Array.isArray(body.hours)) {
+    throw new Error("hours は配列で指定してください");
+  }
+
+  if (!body.hours.length) {
+    throw new Error("営業時間データが空です");
+  }
+
+  const normalizedHours = body.hours.map((item) => {
+    const dow = Number(item.dow);
+
+    if (!Number.isInteger(dow) || dow < 0 || dow > 6) {
+      throw new Error("dow は 0〜6 で指定してください");
+    }
+
+    const isClosed = normalizeBoolean(item.isClosed);
+
+    return {
+      dow,
+      isClosed,
+      openTime: isClosed ? null : normalizeNullableString(item.openTime),
+      closeTime: isClosed ? null : normalizeNullableString(item.closeTime),
+      lastOrderTime: isClosed ? null : normalizeNullableString(item.lastOrderTime),
+      slotIntervalMinutes: isClosed ? null : normalizeNullableNumber(item.slotIntervalMinutes),
+      maxGuestsPerSlot: isClosed ? null : normalizeNullableNumber(item.maxGuestsPerSlot),
+      maxGroupsPerSlot: isClosed ? null : normalizeNullableNumber(item.maxGroupsPerSlot),
+      note: normalizeNullableString(item.note),
+    };
+  });
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_update_business_hours",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_hours: normalizedHours,
         p_actor_id: body.actorId || "admin_dashboard",
       }),
     }
