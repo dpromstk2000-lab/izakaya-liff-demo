@@ -162,15 +162,42 @@
         </div>
 
         <div class="panel p-4">
-          <h2 class="text-lg font-black">LINE通知キュー送信</h2>
-          <p class="text-xs text-slate-400 mt-1">予約受付・確定・キャンセル・リマインド通知を送信します。</p>
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h2 class="text-lg font-black">LINE通知</h2>
+              <p class="text-xs text-slate-400 mt-1">
+                予約受付・確定・キャンセル・リマインド通知をまとめて送信します。
+              </p>
+            </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
-            <input id="notification-limit" type="number" class="input sm:col-span-2" value="20" min="1" max="50" />
-            <button onclick="sendNotifications()" class="btn bg-emerald-600 text-white">
-              通知送信
+            <button onclick="loadNotificationSummary()" class="text-xs font-black text-blue-600 bg-blue-50 border border-blue-200 px-3 py-2 rounded-xl shrink-0">
+              更新
             </button>
           </div>
+
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 mt-4">
+            <p class="text-sm font-black text-slate-700">
+              送信待ち通知：
+              <span id="notification-queued-count" class="text-2xl text-emerald-600 align-middle">-</span>
+              件
+            </p>
+
+            <p id="notification-failed-count" class="text-xs text-slate-500 mt-2">
+              失敗通知：-件
+            </p>
+
+            <p id="notification-type-summary" class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+              内訳：取得中...
+            </p>
+          </div>
+
+          <button id="btn-send-notifications" onclick="sendNotifications()" class="btn w-full bg-emerald-600 text-white mt-3">
+            LINE通知を送信
+          </button>
+
+          <p class="text-[11px] text-slate-400 mt-2 leading-relaxed">
+            送信待ち通知を古い順に最大20件ずつ送信します。送信後、件数は自動更新されます。
+          </p>
 
           <p id="notification-result" class="text-xs text-slate-500 mt-3"></p>
         </div>
@@ -347,6 +374,18 @@
       closed: "受付停止"
     };
 
+    const NOTIFY_TYPE_LABELS = {
+      reservation_requested_customer: "予約受付・お客様",
+      reservation_requested_admin: "予約受付・管理者",
+      reservation_confirmed_customer: "予約確定",
+      reservation_cancelled_shop_customer: "店舗キャンセル",
+      reservation_cancelled_customer: "顧客キャンセル",
+      reservation_cancelled_customer_admin: "顧客キャンセル・管理者",
+      reservation_changed_customer: "予約変更・お客様",
+      reservation_changed_admin: "予約変更・管理者",
+      reservation_reminder_customer: "前日リマインド"
+    };
+
     const SHIFT_DEFS = {
       lunch: {
         code: "lunch",
@@ -431,7 +470,8 @@
       await Promise.allSettled([
         loadPublicStatus(),
         loadBusinessShifts(),
-        loadSpecialDayShifts()
+        loadSpecialDayShifts(),
+        loadNotificationSummary()
       ]);
 
       await loadAdminDay();
@@ -521,6 +561,7 @@
           result.message || `作成: ${result.inserted_count || 0}件`;
 
         showToast("リマインド通知キューを作成しました。");
+        await loadNotificationSummary();
 
       } catch (err) {
         alert("リマインド作成に失敗しました。\n" + err.message);
@@ -531,23 +572,84 @@
       document.getElementById("reminder-target-date").value = addDays(getTodayDateString(), 1);
     }
 
-    async function sendNotifications() {
+    async function loadNotificationSummary() {
       try {
-        const limit = Number(document.getElementById("notification-limit").value || 20);
+        const data = await adminFetch("/api/admin/notifications/summary");
+        const summary = data.summary || {};
+
+        const queuedCount = Number(summary.queuedCount || 0);
+        const failedCount = Number(summary.failedCount || 0);
+
+        document.getElementById("notification-queued-count").innerText = String(queuedCount);
+        document.getElementById("notification-failed-count").innerText = `失敗通知：${failedCount}件`;
+
+        document.getElementById("notification-type-summary").innerText =
+          formatNotifyTypeSummary(summary.queuedByType || {});
+
+        const button = document.getElementById("btn-send-notifications");
+
+        if (queuedCount > 0) {
+          button.disabled = false;
+          button.innerText = "LINE通知を送信";
+          button.className = "btn w-full bg-emerald-600 text-white mt-3";
+        } else {
+          button.disabled = true;
+          button.innerText = "送信待ちなし";
+          button.className = "btn w-full bg-slate-200 text-slate-400 mt-3 cursor-not-allowed";
+        }
+
+      } catch (err) {
+        console.error(err);
+
+        document.getElementById("notification-queued-count").innerText = "-";
+        document.getElementById("notification-failed-count").innerText = "失敗通知：取得失敗";
+        document.getElementById("notification-type-summary").innerText =
+          `通知件数を取得できませんでした。${err.message}`;
+
+        const button = document.getElementById("btn-send-notifications");
+        button.disabled = true;
+        button.innerText = "通知件数取得失敗";
+        button.className = "btn w-full bg-slate-200 text-slate-400 mt-3 cursor-not-allowed";
+      }
+    }
+
+    function formatNotifyTypeSummary(typeMap) {
+      const entries = Object.entries(typeMap || {});
+
+      if (!entries.length) {
+        return "内訳：送信待ち通知はありません。";
+      }
+
+      return "内訳：" + entries.map(([type, count]) => {
+        return `${NOTIFY_TYPE_LABELS[type] || type} ${count}件`;
+      }).join(" / ");
+    }
+
+    async function sendNotifications() {
+      const button = document.getElementById("btn-send-notifications");
+
+      try {
+        button.disabled = true;
+        button.innerText = "送信中...";
+        button.className = "btn w-full bg-slate-700 text-white mt-3";
 
         const data = await adminFetch("/api/admin/notifications/send", {
           method: "POST",
-          body: JSON.stringify({ limit })
+          body: JSON.stringify({
+            limit: 20
+          })
         });
 
         const summary = data.summary || {};
         document.getElementById("notification-result").innerText =
-          `合計 ${summary.total || 0} / 送信 ${summary.sent || 0} / 失敗 ${summary.failed || 0} / スキップ ${summary.skipped || 0}`;
+          `送信処理完了：合計 ${summary.total || 0} / 送信 ${summary.sent || 0} / 失敗 ${summary.failed || 0} / スキップ ${summary.skipped || 0}`;
 
         showToast("通知送信処理が完了しました。");
+        await loadNotificationSummary();
 
       } catch (err) {
         alert("通知送信に失敗しました。\n" + err.message);
+        await loadNotificationSummary();
       }
     }
 
@@ -796,6 +898,7 @@
 
         showToast(data.result?.message || "予約ステータスを更新しました。");
         await loadAdminDay();
+        await loadNotificationSummary();
 
       } catch (err) {
         alert("予約ステータスを変更できませんでした。\n" + err.message);
