@@ -82,6 +82,22 @@ export async function onRequest(context) {
       return await enqueueReminders(request, env);
     }
 
+    if (url.pathname === "/api/admin/business-hours" && request.method === "GET") {
+      return await getAdminBusinessHours(request, env);
+    }
+
+    if (url.pathname === "/api/admin/business-hours/update" && request.method === "POST") {
+      return await updateBusinessHours(request, env);
+    }
+
+    if (url.pathname === "/api/admin/business-shifts" && request.method === "GET") {
+      return await getAdminBusinessShifts(request, env);
+    }
+
+    if (url.pathname === "/api/admin/business-shifts/update" && request.method === "POST") {
+      return await updateBusinessShifts(request, env);
+    }
+
     if (url.pathname === "/api/admin/special-days" && request.method === "GET") {
       return await getAdminSpecialDays(request, env, url);
     }
@@ -92,14 +108,6 @@ export async function onRequest(context) {
 
     if (url.pathname === "/api/admin/special-days/delete" && request.method === "POST") {
       return await deleteSpecialDay(request, env);
-    }
-
-    if (url.pathname === "/api/admin/business-hours" && request.method === "GET") {
-      return await getAdminBusinessHours(request, env);
-    }
-
-    if (url.pathname === "/api/admin/business-hours/update" && request.method === "POST") {
-      return await updateBusinessHours(request, env);
     }
 
     return jsonResponse({
@@ -295,6 +303,20 @@ function normalizeBoolean(value) {
   return value === true || value === "true" || value === 1 || value === "1";
 }
 
+function normalizeShiftCode(value) {
+  const text = String(value || "").trim().toLowerCase();
+
+  if (!text) {
+    throw new Error("shiftCode が必要です");
+  }
+
+  if (!/^[a-z0-9_-]{1,40}$/.test(text)) {
+    throw new Error("shiftCode は英数字・ハイフン・アンダースコアのみです");
+  }
+
+  return text;
+}
+
 // =========================================================
 // Public APIs
 // =========================================================
@@ -322,6 +344,11 @@ async function getPublicSettings(env) {
     `/rest/v1/iz_demo_business_hours?shop_id=eq.${SHOP_ID}&select=dow,is_closed,open_time,close_time,last_order_time,slot_interval_minutes,max_guests_per_slot,max_groups_per_slot,note&order=dow.asc`
   );
 
+  const businessShifts = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_business_shifts?shop_id=eq.${SHOP_ID}&select=dow,shift_code,shift_label,is_enabled,open_time,close_time,last_order_time,slot_interval_minutes,max_guests_per_slot,max_groups_per_slot,sort_order,note&order=dow.asc&order=sort_order.asc`
+  );
+
   const specialDays = await supabaseFetch(
     env,
     `/rest/v1/iz_demo_special_days?shop_id=eq.${SHOP_ID}&select=target_date,is_closed,open_time,close_time,last_order_time,slot_interval_minutes,max_guests_per_slot,max_groups_per_slot,note&order=target_date.asc`
@@ -331,6 +358,7 @@ async function getPublicSettings(env) {
     ok: true,
     shop: shop?.[0] || null,
     businessHours: businessHours || [],
+    businessShifts: businessShifts || [],
     specialDays: specialDays || [],
   }, env);
 }
@@ -720,6 +748,7 @@ async function enqueueReminders(request, env) {
 
 // =========================================================
 // Business Hours Admin APIs
+// 旧形式。互換用として残す。
 // =========================================================
 
 async function getAdminBusinessHours(request, env) {
@@ -779,6 +808,94 @@ async function updateBusinessHours(request, env) {
       body: JSON.stringify({
         p_shop_id: SHOP_ID,
         p_hours: normalizedHours,
+        p_actor_id: body.actorId || "admin_dashboard",
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    result: Array.isArray(result) ? result[0] : result,
+  }, env);
+}
+
+// =========================================================
+// Business Shifts Admin APIs
+// 新形式。昼・夜の2部制用。
+// =========================================================
+
+async function getAdminBusinessShifts(request, env) {
+  requireAdmin(request, env);
+
+  const data = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_business_shifts?shop_id=eq.${SHOP_ID}&select=id,dow,shift_code,shift_label,is_enabled,open_time,close_time,last_order_time,slot_interval_minutes,max_guests_per_slot,max_groups_per_slot,sort_order,note,created_at,updated_at&order=dow.asc&order=sort_order.asc`
+  );
+
+  return jsonResponse({
+    ok: true,
+    businessShifts: data || [],
+  }, env);
+}
+
+async function updateBusinessShifts(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+
+  if (!Array.isArray(body.shifts)) {
+    throw new Error("shifts は配列で指定してください");
+  }
+
+  if (!body.shifts.length) {
+    throw new Error("営業枠データが空です");
+  }
+
+  const normalizedShifts = body.shifts.map((item) => {
+    const dow = Number(item.dow);
+
+    if (!Number.isInteger(dow) || dow < 0 || dow > 6) {
+      throw new Error("dow は 0〜6 で指定してください");
+    }
+
+    const shiftCode = normalizeShiftCode(item.shiftCode || item.shift_code);
+    const isEnabled = normalizeBoolean(item.isEnabled ?? item.is_enabled);
+
+    const defaultLabel =
+      shiftCode === "lunch"
+        ? "昼営業"
+        : shiftCode === "dinner"
+          ? "夜営業"
+          : shiftCode;
+
+    const sortOrder =
+      normalizeNullableNumber(item.sortOrder ?? item.sort_order) ??
+      (shiftCode === "lunch" ? 10 : shiftCode === "dinner" ? 20 : 100);
+
+    return {
+      dow,
+      shiftCode,
+      shiftLabel: normalizeNullableString(item.shiftLabel || item.shift_label) || defaultLabel,
+      isEnabled,
+      openTime: normalizeNullableString(item.openTime ?? item.open_time),
+      closeTime: normalizeNullableString(item.closeTime ?? item.close_time),
+      lastOrderTime: normalizeNullableString(item.lastOrderTime ?? item.last_order_time),
+      slotIntervalMinutes: normalizeNullableNumber(item.slotIntervalMinutes ?? item.slot_interval_minutes) ?? 30,
+      maxGuestsPerSlot: normalizeNullableNumber(item.maxGuestsPerSlot ?? item.max_guests_per_slot) ?? 20,
+      maxGroupsPerSlot: normalizeNullableNumber(item.maxGroupsPerSlot ?? item.max_groups_per_slot) ?? 8,
+      sortOrder,
+      note: normalizeNullableString(item.note),
+    };
+  });
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_update_business_shifts",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_shifts: normalizedShifts,
         p_actor_id: body.actorId || "admin_dashboard",
       }),
     }
