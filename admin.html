@@ -104,6 +104,29 @@
             </p>
         </section>
 
+        <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-start gap-4">
+                <div>
+                    <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                        LINE通知キュー送信
+                    </h2>
+                    <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                        queued の通知をLINE Messaging APIで送信します。成功すると sent、失敗すると failed になります。
+                    </p>
+                </div>
+
+                <button
+                    id="btn-send-notifications"
+                    onclick="sendQueuedNotifications()"
+                    class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-3 rounded-xl text-xs shadow-sm active:scale-95 transition"
+                >
+                    📣 通知送信
+                </button>
+            </div>
+
+            <div id="notification-result" class="hidden mt-4 bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-600 whitespace-pre-wrap"></div>
+        </section>
+
         <section class="bg-slate-900 text-white rounded-2xl shadow-lg overflow-hidden">
             <div class="flex justify-between items-center p-2">
                 <button onclick="changeDate(-1)" class="p-3 bg-slate-800 hover:bg-slate-700 rounded-xl transition active:scale-95">
@@ -461,6 +484,62 @@
             if (status === "few") activeButton.classList.add("bg-amber-600");
             if (status === "full") activeButton.classList.add("bg-red-600");
             if (status === "closed") activeButton.classList.add("bg-slate-700");
+        }
+
+        async function sendQueuedNotifications() {
+            const button = document.getElementById("btn-send-notifications");
+            const resultEl = document.getElementById("notification-result");
+
+            if (!confirm("queued のLINE通知を送信しますか？")) {
+                return;
+            }
+
+            button.disabled = true;
+            button.innerText = "送信中...";
+            resultEl.classList.remove("hidden");
+            resultEl.innerText = "通知送信中...";
+
+            try {
+                const data = await apiFetch("/api/admin/notifications/send", {
+                    method: "POST",
+                    headers: adminHeaders(),
+                    body: JSON.stringify({
+                        limit: 20
+                    })
+                });
+
+                const summary = data.summary || {};
+                const results = data.results || [];
+
+                const lines = [];
+                lines.push("通知送信結果");
+                lines.push(`合計: ${summary.total ?? 0}`);
+                lines.push(`送信成功: ${summary.sent ?? 0}`);
+                lines.push(`送信失敗: ${summary.failed ?? 0}`);
+                lines.push(`スキップ: ${summary.skipped ?? 0}`);
+
+                if (results.length) {
+                    lines.push("");
+                    lines.push("詳細:");
+                    results.slice(0, 10).forEach((item, index) => {
+                        lines.push(
+                            `${index + 1}. ${item.notifyType || "-"} / ${item.status || "-"}${item.message ? " / " + item.message : ""}`
+                        );
+                    });
+                }
+
+                resultEl.innerText = lines.join("\n");
+                showToast("通知送信処理が完了しました。");
+
+            } catch (err) {
+                console.error("通知送信エラー:", err);
+                resultEl.innerText = `通知送信エラー:\n${err.message}`;
+                alert("通知送信に失敗しました。\n" + err.message);
+
+            } finally {
+                button.disabled = false;
+                button.innerText = "📣 通知送信";
+            }
         }
 
         function changeDate(offset) {
