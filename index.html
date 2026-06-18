@@ -253,6 +253,23 @@
             return String(value).slice(0, 5);
         }
 
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function escapeJs(value) {
+            return String(value ?? "")
+                .replaceAll("\\", "\\\\")
+                .replaceAll("'", "\\'")
+                .replaceAll("\n", "\\n")
+                .replaceAll("\r", "");
+        }
+
         async function apiFetch(path, options = {}) {
             const res = await fetch(`${API_BASE}${path}`, {
                 ...options,
@@ -377,7 +394,7 @@
                 locale: "ja",
                 minDate: new Date(),
                 dateFormat: "Y-m-d",
-                disableMobile: "true"
+                disableMobile: true
             });
 
             try {
@@ -549,26 +566,47 @@
                         statusClass = "bg-emerald-600";
                     }
 
-                    if (
-                        res.status === "cancelled_customer" ||
-                        res.status === "cancelled_shop"
-                    ) {
-                        statusClass = "bg-stone-400";
-                    }
+                    const prefsHtml =
+                        Array.isArray(res.preferences) && res.preferences.length
+                            ? res.preferences.map(p =>
+                                `<span class="bg-stone-100 text-stone-500 text-[10px] px-2 py-0.5 rounded-full">${escapeHtml(p)}</span>`
+                            ).join(" ")
+                            : '<span class="text-[10px] text-stone-300">好みなし</span>';
+
+                    const cancelButton =
+                        ["pending", "confirmed"].includes(res.status)
+                            ? `
+                                <button
+                                    onclick="cancelReservation('${escapeJs(res.id)}', '${escapeJs(res.reserve_date)}', '${escapeJs(formatTime(res.reserve_time))}')"
+                                    class="w-full mt-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-3 rounded-xl text-xs active:scale-95 transition"
+                                >
+                                    この予約をキャンセルする
+                                </button>
+                            `
+                            : "";
 
                     return `
                         <div class="border rounded-xl p-4 bg-stone-50 border-stone-100 relative shadow-sm">
                             <span class="absolute top-4 right-4 text-[10px] px-2 py-1 rounded ${statusClass} text-white font-bold">
                                 ${statusLabel}
                             </span>
+
                             <p class="text-[10px] text-stone-400 mb-1">ご予約</p>
+
                             <p class="font-bold text-stone-700">
-                                ${res.reserve_date}
-                                <span class="text-amber-600">${formatTime(res.reserve_time)}〜</span>
+                                ${escapeHtml(res.reserve_date)}
+                                <span class="text-amber-600">${escapeHtml(formatTime(res.reserve_time))}〜</span>
                             </p>
+
                             <p class="text-xs text-stone-500 mt-1">
-                                👤 ${res.party_size}名様 / 🪑 ${seatLabel}
+                                👤 ${escapeHtml(res.party_size)}名様 / 🪑 ${escapeHtml(seatLabel)}
                             </p>
+
+                            <div class="mt-2 flex flex-wrap gap-1">
+                                ${prefsHtml}
+                            </div>
+
+                            ${cancelButton}
                         </div>
                     `;
                 }).join("");
@@ -581,7 +619,64 @@
                 }
 
                 listEl.innerHTML =
-                    `<p class="text-center text-red-500 py-12 text-sm">エラー: ${err.message}</p>`;
+                    `<p class="text-center text-red-500 py-12 text-sm">エラー: ${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        async function cancelReservation(reservationId, reserveDate, reserveTime) {
+            try {
+                const reason = prompt(
+                    `予約をキャンセルします。\n\n日時：${reserveDate} ${reserveTime}\n\nキャンセル理由を入力してください。`,
+                    "都合が悪くなったため"
+                );
+
+                if (reason === null) {
+                    return;
+                }
+
+                const trimmedReason = reason.trim() || "顧客都合";
+
+                if (!confirm(`この予約をキャンセルしますか？\n\n理由：${trimmedReason}`)) {
+                    return;
+                }
+
+                const idToken = await getValidLineIdToken();
+
+                const data = await apiFetch("/api/reservations/cancel", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        idToken,
+                        reservationId,
+                        reason: trimmedReason
+                    })
+                });
+
+                if (typeof liff !== "undefined" && liff.isInClient()) {
+                    try {
+                        await liff.sendMessages([{
+                            type: "text",
+                            text:
+                                `🏮 予約キャンセル受付\n\n` +
+                                `日時：${reserveDate} ${reserveTime}\n` +
+                                `理由：${trimmedReason}\n\n` +
+                                `予約をキャンセルしました。`
+                        }]);
+                    } catch (msgErr) {
+                        console.warn("LIFFメッセージ送信はスキップされました:", msgErr);
+                    }
+                }
+
+                alert(data.result?.message || "予約をキャンセルしました。");
+                await loadHistory();
+
+            } catch (err) {
+                console.error("キャンセルエラー:", err);
+
+                if (handleAuthExpiredError(err)) {
+                    return;
+                }
+
+                alert("キャンセルできませんでした。\n" + err.message);
             }
         }
 
