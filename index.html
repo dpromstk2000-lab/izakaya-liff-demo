@@ -3,254 +3,250 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>プレミアム居酒屋 予約システム</title>
+    <title>居酒屋DPRO 予約</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" type="text/css" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
-
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
 
         body {
             font-family: 'Noto Sans JP', sans-serif;
         }
 
-        .amber-gradient {
-            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        ::-webkit-scrollbar {
+            display: none;
         }
 
-        .tab-active {
-            border-bottom: 3px solid #d97706;
-            color: #d97706;
-            font-weight: bold;
+        .time-active {
+            background: #0f172a !important;
+            color: white !important;
+            border-color: #0f172a !important;
+            transform: scale(1.02);
         }
     </style>
 </head>
 
-<body class="bg-stone-100 text-stone-800 min-h-screen">
+<body class="bg-slate-100 text-slate-800 min-h-screen pb-24">
 
-    <header class="amber-gradient text-white pt-8 pb-12 px-6 rounded-b-[3rem] shadow-xl relative overflow-hidden">
-        <div class="absolute top-0 right-0 opacity-10 pointer-events-none transform translate-x-1/4 -translate-y-1/4">
-            <span class="text-[12rem]">🏮</span>
-        </div>
-        <div class="relative z-10">
-            <h1 class="text-2xl font-bold tracking-widest text-center">居酒屋 DPRO</h1>
-            <p class="text-center text-amber-100 text-sm mt-1">選ばれし大人のための隠れ家</p>
+    <header class="bg-slate-900 text-white p-4 shadow-md sticky top-0 z-40">
+        <div class="max-w-md mx-auto">
+            <div class="flex justify-between items-start gap-3">
+                <div>
+                    <h1 class="text-xl font-black tracking-wider">🏮 居酒屋DPRO</h1>
+                    <p class="text-[11px] text-slate-400 mt-1">LINE予約デモ / 昼・夜2部制対応</p>
+                </div>
+
+                <div class="text-right">
+                    <div id="shop-status-badge" class="text-xs font-bold bg-slate-700 text-white px-3 py-1 rounded-full">
+                        取得中...
+                    </div>
+                    <button onclick="refreshAll()" class="text-[10px] text-slate-400 underline mt-2">
+                        更新
+                    </button>
+                </div>
+            </div>
         </div>
     </header>
 
-    <main class="px-4 -mt-8 pb-12 max-w-md mx-auto relative z-20">
+    <div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-4 py-3 rounded-xl shadow-lg text-sm font-bold bg-slate-900 text-white"></div>
 
-        <div class="flex bg-white rounded-t-2xl shadow-sm border-b border-stone-100 overflow-hidden">
-            <button id="btn-reserve" class="flex-1 py-4 text-sm transition-all tab-active" onclick="switchTab('reserve')">
-                新規予約
-            </button>
-            <button id="btn-history" class="flex-1 py-4 text-sm transition-all text-stone-400" onclick="switchTab('history')">
-                予約確認
-            </button>
-        </div>
+    <main class="max-w-md mx-auto p-4 space-y-5">
 
-        <div id="tab-reserve-content" class="bg-white p-6 rounded-b-2xl shadow-xl space-y-6">
+        <!-- LINEプロフィール -->
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex items-center gap-3">
+                <img id="profile-picture" src="" alt="" class="hidden w-12 h-12 rounded-full border border-slate-200 object-cover">
 
-            <div id="loading" class="text-center py-12">
-                <div class="animate-spin inline-block w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full mb-4"></div>
-                <p class="text-stone-500 font-medium">認証中...</p>
-            </div>
-
-            <div id="app" class="hidden space-y-6">
-
-                <div class="flex items-center gap-4 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                    <img id="user-img" class="w-12 h-12 rounded-full border-2 border-amber-200" src="https://via.placeholder.com/150" alt="">
-                    <div>
-                        <p class="text-xs text-stone-400">ようこそ</p>
-                        <p id="user-name" class="font-bold text-stone-700">ゲスト 様</p>
-                    </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs text-slate-400 font-bold">LINEユーザー</p>
+                    <p id="profile-name" class="font-bold text-slate-800 truncate">認証中...</p>
                 </div>
 
-                <div id="status-banner" class="hidden p-4 rounded-xl text-sm font-bold text-center border-2"></div>
-
-                <form id="reserve-form" class="space-y-5">
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <label class="relative block group">
-                            <input type="radio" name="reserve_type" value="通常予約" checked class="peer hidden" onchange="toggleType('normal')">
-                            <div class="p-3 text-center rounded-xl border-2 border-stone-200 peer-checked:border-amber-600 peer-checked:bg-amber-50 cursor-pointer transition-all">
-                                <span class="block text-xl">📅</span>
-                                <span class="text-xs font-bold text-stone-500 peer-checked:text-amber-700">通常予約</span>
-                            </div>
-                        </label>
-
-                        <label class="relative block">
-                            <input type="radio" name="reserve_type" id="input-tonight" value="今夜の空席" class="peer hidden" onchange="toggleType('tonight')">
-                            <div id="label-tonight" class="p-3 text-center rounded-xl border-2 border-stone-200 peer-checked:border-amber-600 peer-checked:bg-amber-50 cursor-pointer transition-all">
-                                <span id="tonight-icon" class="block text-xl">⚡</span>
-                                <span id="tonight-text" class="text-xs font-bold text-stone-500 peer-checked:text-amber-700">今夜の空席</span>
-                            </div>
-                        </label>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div id="date-group">
-                            <label class="block text-xs font-bold text-stone-400 mb-1">来店日</label>
-                            <input type="text" id="reserve-date" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 focus:ring-2 focus:ring-amber-500 outline-none">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-bold text-stone-400 mb-1">時間</label>
-                                <select id="reserve-time" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 outline-none">
-                                    <option value="17:00">17:00</option>
-                                    <option value="17:30">17:30</option>
-                                    <option value="18:00">18:00</option>
-                                    <option value="18:30">18:30</option>
-                                    <option value="19:00" selected>19:00</option>
-                                    <option value="19:30">19:30</option>
-                                    <option value="20:00">20:00</option>
-                                    <option value="20:30">20:30</option>
-                                    <option value="21:00">21:00</option>
-                                    <option value="21:30">21:30</option>
-                                    <option value="22:00">22:00</option>
-                                    <option value="22:30">22:30</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-bold text-stone-400 mb-1">人数</label>
-                                <select id="party-size" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 outline-none">
-                                    <option value="1">1名</option>
-                                    <option value="2" selected>2名</option>
-                                    <option value="3">3名</option>
-                                    <option value="4">4名</option>
-                                    <option value="5">5名</option>
-                                    <option value="6">6名</option>
-                                    <option value="7">7名</option>
-                                    <option value="8">8名</option>
-                                    <option value="9">9名</option>
-                                    <option value="10">10名</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-stone-400 mb-2">希望の座席</label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <label class="text-center">
-                                <input type="radio" name="seat_type" value="カウンター" checked class="peer hidden">
-                                <div class="py-2 text-xs border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
-                                    カウンター
-                                </div>
-                            </label>
-
-                            <label class="text-center">
-                                <input type="radio" name="seat_type" value="テーブル" class="peer hidden">
-                                <div class="py-2 text-xs border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
-                                    テーブル
-                                </div>
-                            </label>
-
-                            <label class="text-center">
-                                <input type="radio" name="seat_type" value="個室" class="peer hidden">
-                                <div class="py-2 text-xs border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
-                                    完全個室
-                                </div>
-                            </label>
-                        </div>
-                        <p class="text-[10px] text-stone-400 mt-2">
-                            ※お席のご希望は確約ではありません。店舗からの確定連絡をお待ちください。
-                        </p>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-stone-400 mb-2">最初の一杯・お好み（複数選択可）</label>
-                        <div class="flex flex-wrap gap-2">
-                            <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
-                                <input type="checkbox" name="preferences" value="ビール" class="hidden">
-                                🍺 とりあえずビール
-                            </label>
-
-                            <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
-                                <input type="checkbox" name="preferences" value="レモンサワー" class="hidden">
-                                🍋 レモンサワー
-                            </label>
-
-                            <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
-                                <input type="checkbox" name="preferences" value="ハイボール" class="hidden">
-                                🥃 ハイボール
-                            </label>
-
-                            <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
-                                <input type="checkbox" name="preferences" value="焼酎・日本酒" class="hidden">
-                                🍶 焼酎・日本酒
-                            </label>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="w-full amber-gradient text-white font-bold py-4 rounded-2xl shadow-lg shadow-amber-900/20 active:scale-95 transition-all mt-4">
-                        予約内容を送信する
-                    </button>
-                </form>
+                <button onclick="loginLine()" id="btn-line-login" class="hidden bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition">
+                    LINEログイン
+                </button>
             </div>
-        </div>
+        </section>
 
-        <div id="tab-history-content" class="hidden bg-white p-6 rounded-b-2xl shadow-xl min-h-[400px]">
-            <h3 class="font-bold border-b pb-2 mb-4 text-stone-700">現在のご予約状況</h3>
-            <div id="reservation-list" class="space-y-4">
-                <p class="text-center text-stone-400 py-12 text-sm">読み込み中...</p>
-            </div>
-        </div>
-    </main>
-
-    <div id="change-modal" class="hidden fixed inset-0 z-[100] bg-black/60 px-4 py-6 overflow-y-auto">
-        <div class="bg-white max-w-md mx-auto rounded-2xl shadow-2xl overflow-hidden">
-            <div class="amber-gradient text-white p-5">
-                <div class="flex justify-between items-start gap-4">
-                    <div>
-                        <h2 class="text-lg font-bold">予約を変更する</h2>
-                        <p id="change-current-text" class="text-xs text-amber-100 mt-1">現在の予約情報</p>
-                    </div>
-                    <button type="button" onclick="closeChangeModal()" class="bg-white/20 rounded-full w-8 h-8 text-lg leading-none">
-                        ×
-                    </button>
+        <!-- 店舗ステータス -->
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-xs text-slate-400 font-bold">今の受付状況</p>
+                    <p id="shop-status-text" class="text-lg font-black text-slate-800 mt-1">取得中...</p>
                 </div>
+
+                <div id="shop-status-icon" class="text-4xl">🏮</div>
             </div>
 
-            <form id="change-form" class="p-5 space-y-5">
-                <input type="hidden" id="change-reservation-id">
+            <p id="shop-status-note" class="text-[11px] text-slate-400 mt-2">
+                空席状況は店舗側で随時更新されます。
+            </p>
+        </section>
+
+        <!-- 新規予約 -->
+        <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div class="mb-4">
+                <h2 class="text-lg font-black text-slate-800">新規予約</h2>
+                <p class="text-[11px] text-slate-400 mt-1">
+                    営業日・営業時間に合わせて予約可能な時間だけ表示されます。
+                </p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">予約日</label>
+                    <input
+                        id="reserve-date"
+                        type="date"
+                        onchange="updateMainTimeSlots()"
+                        class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                    <p id="reserve-date-info" class="text-[11px] text-slate-400 mt-2"></p>
+                </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-stone-400 mb-1">変更後の来店日</label>
-                    <input type="text" id="change-date" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 focus:ring-2 focus:ring-amber-500 outline-none">
+                    <label class="block text-xs font-bold text-slate-500 mb-2">予約時間</label>
+                    <div id="time-slot-list" class="space-y-3">
+                        <p class="text-xs text-slate-400">日付を選択してください。</p>
+                    </div>
+                    <input id="reserve-time" type="hidden">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-stone-400 mb-1">変更後の時間</label>
-                        <select id="change-time" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 outline-none">
-                            <option value="17:00">17:00</option>
-                            <option value="17:30">17:30</option>
-                            <option value="18:00">18:00</option>
-                            <option value="18:30">18:30</option>
-                            <option value="19:00">19:00</option>
-                            <option value="19:30">19:30</option>
-                            <option value="20:00">20:00</option>
-                            <option value="20:30">20:30</option>
-                            <option value="21:00">21:00</option>
-                            <option value="21:30">21:30</option>
-                            <option value="22:00">22:00</option>
-                            <option value="22:30">22:30</option>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">人数</label>
+                        <select id="party-size" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="1">1名</option>
+                            <option value="2" selected>2名</option>
+                            <option value="3">3名</option>
+                            <option value="4">4名</option>
+                            <option value="5">5名</option>
+                            <option value="6">6名</option>
+                            <option value="7">7名</option>
+                            <option value="8">8名</option>
+                            <option value="9">9名</option>
+                            <option value="10">10名</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-stone-400 mb-1">変更後の人数</label>
-                        <select id="change-party-size" required class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 outline-none">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">席タイプ</label>
+                        <select id="seat-type" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="any">指定なし</option>
+                            <option value="counter">カウンター</option>
+                            <option value="table">テーブル</option>
+                            <option value="private_room">個室</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-2">好み・目的</label>
+
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="pref-checkbox" value="静かめ">
+                            静かめ
+                        </label>
+
+                        <label class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="pref-checkbox" value="にぎやか">
+                            にぎやか
+                        </label>
+
+                        <label class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="pref-checkbox" value="飲み会">
+                            飲み会
+                        </label>
+
+                        <label class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" class="pref-checkbox" value="食事中心">
+                            食事中心
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">ご要望</label>
+                    <textarea id="customer-note" rows="3" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500" placeholder="例：子ども連れです / 端の席希望 など"></textarea>
+                </div>
+
+                <button
+                    id="btn-create-reservation"
+                    onclick="createReservation()"
+                    class="w-full bg-amber-600 hover:bg-amber-700 text-white font-black py-4 rounded-2xl active:scale-95 transition shadow-sm"
+                >
+                    予約リクエストを送る
+                </button>
+
+                <p class="text-[10px] text-slate-400 leading-relaxed">
+                    ※送信後は店舗側で確認し、予約確定またはお断りの通知を行います。
+                </p>
+            </div>
+        </section>
+
+        <!-- 自分の予約 -->
+        <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-3">
+                <div>
+                    <h2 class="text-lg font-black text-slate-800">自分の予約</h2>
+                    <p class="text-[11px] text-slate-400 mt-1">仮予約・確定予約のみ表示されます。</p>
+                </div>
+
+                <button onclick="fetchMyReservations()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                    🔄 更新
+                </button>
+            </div>
+
+            <div id="my-reservation-list" class="space-y-3">
+                <p class="text-center text-slate-400 text-sm py-6">読み込み中...</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- 予約変更モーダル -->
+    <div id="change-modal" class="hidden fixed inset-0 bg-black/50 z-[80] p-4">
+        <div class="max-w-md mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden mt-8 max-h-[90vh] overflow-y-auto">
+            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
+                <div>
+                    <h3 class="font-black">予約変更</h3>
+                    <p class="text-[10px] text-slate-400 mt-1">現在の予約をキャンセルし、新しい仮予約を作成します。</p>
+                </div>
+
+                <button onclick="closeChangeModal()" class="w-9 h-9 rounded-full bg-white/10 font-bold">
+                    ×
+                </button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <input id="change-old-reservation-id" type="hidden">
+                <input id="change-reserve-time" type="hidden">
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">変更後の日付</label>
+                    <input
+                        id="change-reserve-date"
+                        type="date"
+                        onchange="updateChangeTimeSlots()"
+                        class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                    <p id="change-date-info" class="text-[11px] text-slate-400 mt-2"></p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-2">変更後の時間</label>
+                    <div id="change-time-slot-list" class="space-y-3">
+                        <p class="text-xs text-slate-400">日付を選択してください。</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">人数</label>
+                        <select id="change-party-size" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500">
                             <option value="1">1名</option>
                             <option value="2">2名</option>
                             <option value="3">3名</option>
@@ -263,109 +259,35 @@
                             <option value="10">10名</option>
                         </select>
                     </div>
-                </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-stone-400 mb-2">変更後の希望座席</label>
-                    <div class="grid grid-cols-4 gap-2">
-                        <label class="text-center">
-                            <input type="radio" name="change-seat-type" value="any" class="peer hidden">
-                            <div class="py-2 text-[11px] border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
-                                指定なし
-                            </div>
-                        </label>
-
-                        <label class="text-center">
-                            <input type="radio" name="change-seat-type" value="counter" class="peer hidden">
-                            <div class="py-2 text-[11px] border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
-                                カウンター
-                            </div>
-                        </label>
-
-                        <label class="text-center">
-                            <input type="radio" name="change-seat-type" value="table" class="peer hidden">
-                            <div class="py-2 text-[11px] border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
-                                テーブル
-                            </div>
-                        </label>
-
-                        <label class="text-center">
-                            <input type="radio" name="change-seat-type" value="private_room" class="peer hidden">
-                            <div class="py-2 text-[11px] border border-stone-200 rounded-lg peer-checked:bg-stone-800 peer-checked:text-white cursor-pointer transition-all">
-                                個室
-                            </div>
-                        </label>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">席タイプ</label>
+                        <select id="change-seat-type" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="any">指定なし</option>
+                            <option value="counter">カウンター</option>
+                            <option value="table">テーブル</option>
+                            <option value="private_room">個室</option>
+                        </select>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-stone-400 mb-2">変更後のお好み（複数選択可）</label>
-                    <div class="flex flex-wrap gap-2">
-                        <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
-                            <input type="checkbox" name="change-preferences" value="ビール" class="hidden">
-                            🍺 ビール
-                        </label>
-
-                        <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
-                            <input type="checkbox" name="change-preferences" value="レモンサワー" class="hidden">
-                            🍋 レモンサワー
-                        </label>
-
-                        <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
-                            <input type="checkbox" name="change-preferences" value="ハイボール" class="hidden">
-                            🥃 ハイボール
-                        </label>
-
-                        <label class="cursor-pointer border-2 border-stone-100 bg-stone-50 rounded-full px-4 py-2 text-xs font-bold transition-all has-[:checked]:bg-amber-100 has-[:checked]:border-amber-500 has-[:checked]:text-amber-800">
-                            <input type="checkbox" name="change-preferences" value="焼酎・日本酒" class="hidden">
-                            🍶 焼酎・日本酒
-                        </label>
-                    </div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1">変更理由・メモ</label>
+                    <textarea id="change-reason" rows="3" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500" placeholder="例：時間変更希望"></textarea>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-stone-400 mb-1">変更理由</label>
-                    <textarea id="change-reason" rows="3" class="w-full border border-stone-200 rounded-xl p-3 bg-stone-50 outline-none text-sm" placeholder="例：人数変更のため、時間を遅らせたい など"></textarea>
-                </div>
-
-                <div class="bg-amber-50 border border-amber-100 text-amber-700 text-xs rounded-xl p-3 leading-relaxed">
-                    変更すると、現在の予約はキャンセル扱いになり、新しい予約が仮予約として作成されます。店舗からの確定連絡をお待ちください。
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <button type="button" onclick="closeChangeModal()" class="bg-stone-100 text-stone-600 font-bold py-3 rounded-xl active:scale-95 transition">
-                        戻る
-                    </button>
-
-                    <button type="submit" class="amber-gradient text-white font-bold py-3 rounded-xl active:scale-95 transition">
-                        変更を送信する
-                    </button>
-                </div>
-            </form>
+                <button onclick="submitChangeReservation()" id="btn-submit-change" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-2xl active:scale-95 transition">
+                    この内容で予約変更する
+                </button>
+            </div>
         </div>
     </div>
-
-    <footer class="text-center py-8 text-[10px] text-stone-400">
-        &copy; PREMIUM KOHAKUTEI RESERVATION SYSTEM
-    </footer>
 
     <script>
         const LIFF_ID = "2010334558-3WGZGeu2";
         const API_BASE = "";
 
-        let userProfile = null;
-        let fp = null;
-        let changeFp = null;
-        let currentReservations = [];
-
-        const SHOP_STATUS_LABELS = {
-            open: "空席あり",
-            few: "残りわずか",
-            full: "満席",
-            closed: "受付停止"
-        };
-
-        const RESERVATION_STATUS_LABELS = {
+        const STATUS_LABELS = {
             pending: "仮予約",
             confirmed: "確定",
             cancelled_customer: "顧客キャンセル",
@@ -381,16 +303,815 @@
             private_room: "個室"
         };
 
-        function mapSeatTypeToCode(value) {
-            if (value === "カウンター") return "counter";
-            if (value === "テーブル") return "table";
-            if (value === "個室" || value === "完全個室") return "private_room";
-            return "any";
+        const SHOP_STATUS_LABELS = {
+            open: "空席あり",
+            few: "残りわずか",
+            full: "満席",
+            closed: "受付停止"
+        };
+
+        const SHOP_STATUS_ICONS = {
+            open: "⭕",
+            few: "🔺",
+            full: "❌",
+            closed: "🛑"
+        };
+
+        const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+
+        let lineProfile = null;
+        let lineIdToken = null;
+        let publicSettings = null;
+        let selectedTime = "";
+        let selectedChangeTime = "";
+        let myReservations = [];
+
+        window.addEventListener("DOMContentLoaded", async () => {
+            setupInitialDates();
+
+            await Promise.allSettled([
+                fetchPublicStatus(),
+                fetchPublicSettings()
+            ]);
+
+            await initLiff();
+
+            updateMainTimeSlots();
+            await fetchMyReservations();
+        });
+
+        function setupInitialDates() {
+            const today = getTodayDateString();
+
+            const reserveDate = document.getElementById("reserve-date");
+            const changeDate = document.getElementById("change-reserve-date");
+
+            reserveDate.value = today;
+            reserveDate.min = today;
+
+            changeDate.value = today;
+            changeDate.min = today;
+        }
+
+        async function initLiff() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+
+                if (!liff.isLoggedIn()) {
+                    document.getElementById("profile-name").innerText = "LINEログインが必要です";
+                    document.getElementById("btn-line-login").classList.remove("hidden");
+                    return;
+                }
+
+                lineProfile = await liff.getProfile();
+                lineIdToken = liff.getIDToken();
+
+                renderProfile();
+
+            } catch (err) {
+                console.error("LIFF初期化エラー:", err);
+                document.getElementById("profile-name").innerText = "LINE認証エラー";
+                document.getElementById("btn-line-login").classList.remove("hidden");
+            }
+        }
+
+        function loginLine() {
+            try {
+                liff.login();
+            } catch {
+                alert("LINEログインを開始できませんでした。LIFF URLから開いてください。");
+            }
+        }
+
+        function renderProfile() {
+            document.getElementById("profile-name").innerText = lineProfile?.displayName || "LINEユーザー";
+
+            const picture = document.getElementById("profile-picture");
+
+            if (lineProfile?.pictureUrl) {
+                picture.src = lineProfile.pictureUrl;
+                picture.classList.remove("hidden");
+            }
+        }
+
+        function ensureLineReady() {
+            if (!lineIdToken) {
+                throw new Error("LINEログインが必要です。");
+            }
+
+            return lineIdToken;
+        }
+
+        async function apiFetch(path, options = {}) {
+            const res = await fetch(`${API_BASE}${path}`, {
+                ...options,
+                headers: {
+                    ...(options.headers || {})
+                }
+            });
+
+            const data = await res.json().catch(() => null);
+
+            if (!res.ok || !data || data.ok === false) {
+                throw new Error(data?.error || `APIエラー: ${res.status}`);
+            }
+
+            return data;
+        }
+
+        async function fetchPublicStatus() {
+            try {
+                const data = await apiFetch("/api/public/status", {
+                    method: "GET"
+                });
+
+                const status = data.status?.status || "open";
+                const message = data.status?.message || SHOP_STATUS_LABELS[status] || status;
+
+                document.getElementById("shop-status-text").innerText = message;
+                document.getElementById("shop-status-icon").innerText = SHOP_STATUS_ICONS[status] || "🏮";
+                document.getElementById("shop-status-badge").innerText = message;
+
+                const badge = document.getElementById("shop-status-badge");
+                badge.className = "text-xs font-bold px-3 py-1 rounded-full";
+
+                if (status === "open") badge.classList.add("bg-emerald-600", "text-white");
+                else if (status === "few") badge.classList.add("bg-amber-500", "text-white");
+                else if (status === "full") badge.classList.add("bg-red-600", "text-white");
+                else badge.classList.add("bg-slate-600", "text-white");
+
+            } catch (err) {
+                console.error("店舗ステータス取得エラー:", err);
+                document.getElementById("shop-status-text").innerText = "取得できませんでした";
+                document.getElementById("shop-status-badge").innerText = "取得失敗";
+            }
+        }
+
+        async function fetchPublicSettings() {
+            try {
+                const data = await apiFetch("/api/public/settings", {
+                    method: "GET"
+                });
+
+                publicSettings = data;
+
+                const months = Number(data.shop?.booking_window_months || 3);
+                const maxDate = addMonthsToDateString(getTodayDateString(), months);
+
+                document.getElementById("reserve-date").max = maxDate;
+                document.getElementById("change-reserve-date").max = maxDate;
+
+            } catch (err) {
+                console.error("公開設定取得エラー:", err);
+                showToast("営業設定を取得できませんでした。");
+            }
+        }
+
+        async function refreshAll() {
+            await Promise.allSettled([
+                fetchPublicStatus(),
+                fetchPublicSettings()
+            ]);
+
+            updateMainTimeSlots();
+            updateChangeTimeSlots();
+            await fetchMyReservations();
+
+            showToast("最新情報に更新しました。");
+        }
+
+        function getTodayDateString() {
+            return formatDate(new Date());
+        }
+
+        function formatDate(date) {
+            const yyyy = date.getFullYear();
+            const mm = String(date.getMonth() + 1).padStart(2, "0");
+            const dd = String(date.getDate()).padStart(2, "0");
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function addMonthsToDateString(dateString, months) {
+            const date = new Date(`${dateString}T00:00:00`);
+            date.setMonth(date.getMonth() + months);
+            return formatDate(date);
         }
 
         function formatTime(value) {
             if (!value) return "";
             return String(value).slice(0, 5);
+        }
+
+        function parseTimeToMinutes(value) {
+            const [hh, mm] = formatTime(value).split(":").map(Number);
+            return hh * 60 + mm;
+        }
+
+        function minutesToTime(minutes) {
+            const hh = Math.floor(minutes / 60);
+            const mm = minutes % 60;
+            return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+        }
+
+        function getDowFromDateString(dateString) {
+            return new Date(`${dateString}T00:00:00`).getDay();
+        }
+
+        function getSpecialDay(dateString) {
+            return (publicSettings?.specialDays || []).find(day => day.target_date === dateString) || null;
+        }
+
+        function getEnabledBusinessShifts(dateString) {
+            const dow = getDowFromDateString(dateString);
+
+            const shifts = (publicSettings?.businessShifts || [])
+                .filter(shift => Number(shift.dow) === dow && shift.is_enabled)
+                .sort((a, b) => Number(a.sort_order || 100) - Number(b.sort_order || 100));
+
+            if (shifts.length) {
+                return shifts.map(shift => ({
+                    shiftCode: shift.shift_code,
+                    shiftLabel: shift.shift_label || shift.shift_code,
+                    openTime: shift.open_time,
+                    closeTime: shift.close_time,
+                    lastOrderTime: shift.last_order_time || shift.close_time,
+                    slotIntervalMinutes: Number(shift.slot_interval_minutes || 30),
+                    maxGuestsPerSlot: shift.max_guests_per_slot,
+                    maxGroupsPerSlot: shift.max_groups_per_slot,
+                    note: shift.note || ""
+                }));
+            }
+
+            return [];
+        }
+
+        function getFallbackBusinessHour(dateString) {
+            const dow = getDowFromDateString(dateString);
+            return (publicSettings?.businessHours || []).find(row => Number(row.dow) === dow) || null;
+        }
+
+        function getAvailability(dateString) {
+            if (!publicSettings) {
+                return {
+                    available: false,
+                    reason: "営業設定を取得中です。",
+                    shifts: []
+                };
+            }
+
+            const special = getSpecialDay(dateString);
+
+            if (special) {
+                if (special.is_closed) {
+                    return {
+                        available: false,
+                        reason: special.note ? `臨時休業：${special.note}` : "臨時休業日です。",
+                        shifts: []
+                    };
+                }
+
+                return {
+                    available: true,
+                    reason: special.note ? `特別営業：${special.note}` : "特別営業日です。",
+                    shifts: [
+                        {
+                            shiftCode: "special",
+                            shiftLabel: "特別営業",
+                            openTime: special.open_time,
+                            closeTime: special.close_time,
+                            lastOrderTime: special.last_order_time || special.close_time,
+                            slotIntervalMinutes: Number(special.slot_interval_minutes || 30),
+                            maxGuestsPerSlot: special.max_guests_per_slot,
+                            maxGroupsPerSlot: special.max_groups_per_slot,
+                            note: special.note || ""
+                        }
+                    ]
+                };
+            }
+
+            const shifts = getEnabledBusinessShifts(dateString);
+
+            if (shifts.length) {
+                return {
+                    available: true,
+                    reason: "通常営業日です。",
+                    shifts
+                };
+            }
+
+            const fallback = getFallbackBusinessHour(dateString);
+
+            if (!fallback || fallback.is_closed) {
+                return {
+                    available: false,
+                    reason: fallback?.note ? `定休日：${fallback.note}` : "定休日です。",
+                    shifts: []
+                };
+            }
+
+            return {
+                available: true,
+                reason: fallback.note || "通常営業日です。",
+                shifts: [
+                    {
+                        shiftCode: "regular",
+                        shiftLabel: "通常営業",
+                        openTime: fallback.open_time,
+                        closeTime: fallback.close_time,
+                        lastOrderTime: fallback.last_order_time || fallback.close_time,
+                        slotIntervalMinutes: Number(fallback.slot_interval_minutes || 30),
+                        maxGuestsPerSlot: fallback.max_guests_per_slot,
+                        maxGroupsPerSlot: fallback.max_groups_per_slot,
+                        note: fallback.note || ""
+                    }
+                ]
+            };
+        }
+
+        function buildSlotsForShift(dateString, shift) {
+            if (!shift.openTime || !shift.lastOrderTime) {
+                return [];
+            }
+
+            const open = parseTimeToMinutes(shift.openTime);
+            const last = parseTimeToMinutes(shift.lastOrderTime);
+            const interval = Number(shift.slotIntervalMinutes || 30);
+
+            const slots = [];
+
+            const today = getTodayDateString();
+            const now = new Date();
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+            for (let minutes = open; minutes <= last; minutes += interval) {
+                if (dateString === today && minutes <= nowMinutes) {
+                    continue;
+                }
+
+                slots.push({
+                    time: minutesToTime(minutes),
+                    shiftCode: shift.shiftCode,
+                    shiftLabel: shift.shiftLabel,
+                    maxGuestsPerSlot: shift.maxGuestsPerSlot,
+                    maxGroupsPerSlot: shift.maxGroupsPerSlot
+                });
+            }
+
+            return slots;
+        }
+
+        function buildSlotGroups(dateString) {
+            const availability = getAvailability(dateString);
+
+            if (!availability.available) {
+                return {
+                    availability,
+                    groups: []
+                };
+            }
+
+            const groups = availability.shifts.map(shift => ({
+                shift,
+                slots: buildSlotsForShift(dateString, shift)
+            }));
+
+            return {
+                availability,
+                groups
+            };
+        }
+
+        function updateMainTimeSlots() {
+            selectedTime = "";
+            document.getElementById("reserve-time").value = "";
+
+            const dateString = document.getElementById("reserve-date").value;
+            renderTimeSlotGroups({
+                dateString,
+                containerId: "time-slot-list",
+                infoId: "reserve-date-info",
+                selectedValue: selectedTime,
+                onClickFunction: "selectMainTime"
+            });
+        }
+
+        function updateChangeTimeSlots() {
+            selectedChangeTime = "";
+            document.getElementById("change-reserve-time").value = "";
+
+            const dateString = document.getElementById("change-reserve-date").value;
+            renderTimeSlotGroups({
+                dateString,
+                containerId: "change-time-slot-list",
+                infoId: "change-date-info",
+                selectedValue: selectedChangeTime,
+                onClickFunction: "selectChangeTime"
+            });
+        }
+
+        function renderTimeSlotGroups({ dateString, containerId, infoId, selectedValue, onClickFunction }) {
+            const container = document.getElementById(containerId);
+            const info = document.getElementById(infoId);
+
+            if (!dateString) {
+                container.innerHTML = `<p class="text-xs text-slate-400">日付を選択してください。</p>`;
+                info.innerText = "";
+                return;
+            }
+
+            const { availability, groups } = buildSlotGroups(dateString);
+
+            info.innerText = availability.reason || "";
+
+            if (!availability.available) {
+                container.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm font-bold">
+                        ${escapeHtml(availability.reason)}
+                    </div>
+                `;
+                return;
+            }
+
+            const totalSlots = groups.reduce((sum, group) => sum + group.slots.length, 0);
+
+            if (!totalSlots) {
+                container.innerHTML = `
+                    <div class="bg-slate-50 border border-slate-200 text-slate-500 rounded-xl p-4 text-sm font-bold">
+                        この日に選択できる時間はありません。
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = groups.map(group => {
+                if (!group.slots.length) {
+                    return "";
+                }
+
+                const capacityText = [
+                    group.shift.maxGuestsPerSlot !== null && group.shift.maxGuestsPerSlot !== undefined
+                        ? `最大${group.shift.maxGuestsPerSlot}名`
+                        : null,
+                    group.shift.maxGroupsPerSlot !== null && group.shift.maxGroupsPerSlot !== undefined
+                        ? `最大${group.shift.maxGroupsPerSlot}組`
+                        : null
+                ].filter(Boolean).join(" / ");
+
+                return `
+                    <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-xs font-black text-slate-700">
+                                ${escapeHtml(group.shift.shiftLabel)}
+                            </p>
+                            <p class="text-[10px] text-slate-400">
+                                ${formatTime(group.shift.openTime)}〜${formatTime(group.shift.closeTime)}
+                                ${capacityText ? ` / ${capacityText}` : ""}
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            ${group.slots.map(slot => `
+                                <button
+                                    type="button"
+                                    data-time="${slot.time}"
+                                    onclick="${onClickFunction}('${slot.time}')"
+                                    class="time-button-${containerId} border border-slate-300 bg-white hover:bg-slate-900 hover:text-white rounded-xl py-3 text-sm font-bold transition active:scale-95 ${selectedValue === slot.time ? "time-active" : ""}"
+                                >
+                                    ${slot.time}
+                                </button>
+                            `).join("")}
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function selectMainTime(time) {
+            selectedTime = time;
+            document.getElementById("reserve-time").value = time;
+
+            document.querySelectorAll(".time-button-time-slot-list").forEach(button => {
+                button.classList.toggle("time-active", button.dataset.time === time);
+            });
+        }
+
+        function selectChangeTime(time) {
+            selectedChangeTime = time;
+            document.getElementById("change-reserve-time").value = time;
+
+            document.querySelectorAll(".time-button-change-time-slot-list").forEach(button => {
+                button.classList.toggle("time-active", button.dataset.time === time);
+            });
+        }
+
+        function getSelectedPreferences() {
+            return Array.from(document.querySelectorAll(".pref-checkbox:checked")).map(input => input.value);
+        }
+
+        async function createReservation() {
+            const button = document.getElementById("btn-create-reservation");
+
+            try {
+                const idToken = ensureLineReady();
+
+                const reserveDate = document.getElementById("reserve-date").value;
+                const reserveTime = document.getElementById("reserve-time").value;
+                const partySize = document.getElementById("party-size").value;
+                const seatType = document.getElementById("seat-type").value;
+                const customerNote = document.getElementById("customer-note").value.trim();
+
+                if (!reserveDate) {
+                    alert("予約日を選択してください。");
+                    return;
+                }
+
+                if (!reserveTime) {
+                    alert("予約時間を選択してください。");
+                    return;
+                }
+
+                if (!confirm(`${reserveDate} ${reserveTime} / ${partySize}名で予約リクエストを送りますか？`)) {
+                    return;
+                }
+
+                button.disabled = true;
+                button.innerText = "送信中...";
+
+                const data = await apiFetch("/api/reservations/create", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        idToken,
+                        reserveDate,
+                        reserveTime,
+                        partySize,
+                        seatType,
+                        preferences: getSelectedPreferences(),
+                        customerNote
+                    })
+                });
+
+                const message = data.result?.message || "予約リクエストを送信しました。";
+                showToast(message);
+
+                document.getElementById("customer-note").value = "";
+                document.querySelectorAll(".pref-checkbox").forEach(input => input.checked = false);
+
+                await fetchMyReservations();
+
+            } catch (err) {
+                console.error("予約作成エラー:", err);
+                alert("予約できませんでした。\n" + err.message);
+
+            } finally {
+                button.disabled = false;
+                button.innerText = "予約リクエストを送る";
+            }
+        }
+
+        async function fetchMyReservations() {
+            const list = document.getElementById("my-reservation-list");
+
+            if (!lineIdToken) {
+                list.innerHTML = `
+                    <div class="text-center text-slate-400 text-sm py-6 bg-slate-50 rounded-xl">
+                        LINEログイン後に予約が表示されます。
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = `<p class="text-center text-slate-400 text-sm py-6 animate-pulse">読み込み中...</p>`;
+
+            try {
+                const data = await apiFetch("/api/reservations/my", {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${lineIdToken}`
+                    }
+                });
+
+                myReservations = data.reservations || [];
+                renderMyReservations();
+
+            } catch (err) {
+                console.error("自分の予約取得エラー:", err);
+                list.innerHTML = `
+                    <div class="text-center text-red-500 text-sm py-6 bg-red-50 rounded-xl border border-red-100">
+                        予約を取得できませんでした。<br>${escapeHtml(err.message)}
+                    </div>
+                `;
+            }
+        }
+
+        function renderMyReservations() {
+            const list = document.getElementById("my-reservation-list");
+
+            if (!myReservations.length) {
+                list.innerHTML = `
+                    <div class="text-center text-slate-400 text-sm py-6 bg-slate-50 rounded-xl">
+                        現在、有効な予約はありません。
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = myReservations.map(res => {
+                const statusLabel = STATUS_LABELS[res.status] || res.status;
+                const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
+
+                return `
+                    <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                        <div class="flex justify-between items-start gap-3">
+                            <div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <p class="font-black text-slate-800">
+                                        ${escapeHtml(res.reserve_date)} ${formatTime(res.reserve_time)}
+                                    </p>
+                                    <span class="${reservationStatusClass(res.status)} text-[10px] px-2 py-1 rounded-full font-bold border">
+                                        ${statusLabel}
+                                    </span>
+                                </div>
+
+                                <p class="text-xs text-slate-500 mt-2">
+                                    👤 ${res.party_size}名 / 🪑 ${seatLabel}
+                                </p>
+
+                                ${res.customer_note ? `<p class="text-xs text-slate-400 mt-1">要望: ${escapeHtml(res.customer_note)}</p>` : ""}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 mt-3">
+                            <button onclick="openChangeModal('${escapeJs(res.id)}')" class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-2 rounded-xl text-xs active:scale-95 transition">
+                                予約変更
+                            </button>
+
+                            <button onclick="cancelReservation('${escapeJs(res.id)}')" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-2 rounded-xl text-xs active:scale-95 transition">
+                                キャンセル
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function reservationStatusClass(status) {
+            if (status === "confirmed") {
+                return "bg-emerald-100 text-emerald-700 border-emerald-200";
+            }
+
+            if (status === "pending") {
+                return "bg-amber-100 text-amber-700 border-amber-200";
+            }
+
+            return "bg-slate-100 text-slate-500 border-slate-200";
+        }
+
+        async function cancelReservation(reservationId) {
+            const reason = prompt("キャンセル理由を入力してください。", "顧客都合");
+
+            if (reason === null) {
+                return;
+            }
+
+            if (!confirm("この予約をキャンセルしますか？")) {
+                return;
+            }
+
+            try {
+                const idToken = ensureLineReady();
+
+                const data = await apiFetch("/api/reservations/cancel", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        idToken,
+                        reservationId,
+                        reason
+                    })
+                });
+
+                showToast(data.result?.message || "予約をキャンセルしました。");
+                await fetchMyReservations();
+
+            } catch (err) {
+                console.error("予約キャンセルエラー:", err);
+                alert("キャンセルできませんでした。\n" + err.message);
+            }
+        }
+
+        function openChangeModal(reservationId) {
+            const reservation = myReservations.find(res => res.id === reservationId);
+
+            if (!reservation) {
+                alert("予約が見つかりません。");
+                return;
+            }
+
+            document.getElementById("change-old-reservation-id").value = reservation.id;
+            document.getElementById("change-reserve-date").value = reservation.reserve_date;
+            document.getElementById("change-party-size").value = String(reservation.party_size || 2);
+            document.getElementById("change-seat-type").value = reservation.seat_type || "any";
+            document.getElementById("change-reason").value = "予約内容の変更";
+
+            document.getElementById("change-modal").classList.remove("hidden");
+
+            updateChangeTimeSlots();
+
+            if (reservation.reserve_time) {
+                setTimeout(() => {
+                    const originalTime = formatTime(reservation.reserve_time);
+                    const button = Array.from(document.querySelectorAll(".time-button-change-time-slot-list")).find(btn => btn.dataset.time === originalTime);
+
+                    if (button) {
+                        selectChangeTime(originalTime);
+                    }
+                }, 0);
+            }
+        }
+
+        function closeChangeModal() {
+            document.getElementById("change-modal").classList.add("hidden");
+        }
+
+        async function submitChangeReservation() {
+            const button = document.getElementById("btn-submit-change");
+
+            try {
+                const idToken = ensureLineReady();
+
+                const oldReservationId = document.getElementById("change-old-reservation-id").value;
+                const reserveDate = document.getElementById("change-reserve-date").value;
+                const reserveTime = document.getElementById("change-reserve-time").value;
+                const partySize = document.getElementById("change-party-size").value;
+                const seatType = document.getElementById("change-seat-type").value;
+                const reason = document.getElementById("change-reason").value.trim();
+
+                if (!oldReservationId) {
+                    alert("変更対象の予約がありません。");
+                    return;
+                }
+
+                if (!reserveDate) {
+                    alert("変更後の日付を選択してください。");
+                    return;
+                }
+
+                if (!reserveTime) {
+                    alert("変更後の時間を選択してください。");
+                    return;
+                }
+
+                if (!confirm(`${reserveDate} ${reserveTime} / ${partySize}名に変更しますか？`)) {
+                    return;
+                }
+
+                button.disabled = true;
+                button.innerText = "変更中...";
+
+                const data = await apiFetch("/api/reservations/change", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        idToken,
+                        oldReservationId,
+                        reserveDate,
+                        reserveTime,
+                        partySize,
+                        seatType,
+                        preferences: [],
+                        reason
+                    })
+                });
+
+                showToast(data.result?.message || "予約変更リクエストを送信しました。");
+                closeChangeModal();
+                await fetchMyReservations();
+
+            } catch (err) {
+                console.error("予約変更エラー:", err);
+                alert("予約変更できませんでした。\n" + err.message);
+
+            } finally {
+                button.disabled = false;
+                button.innerText = "この内容で予約変更する";
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.classList.remove("hidden");
+
+            setTimeout(() => {
+                toast.classList.add("hidden");
+            }, 2400);
         }
 
         function escapeHtml(value) {
@@ -409,657 +1130,6 @@
                 .replaceAll("\n", "\\n")
                 .replaceAll("\r", "");
         }
-
-        async function apiFetch(path, options = {}) {
-            const res = await fetch(`${API_BASE}${path}`, {
-                ...options,
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(options.headers || {})
-                }
-            });
-
-            const data = await res.json().catch(() => null);
-
-            if (!res.ok || !data || data.ok === false) {
-                throw new Error(data?.error || `APIエラー: ${res.status}`);
-            }
-
-            return data;
-        }
-
-        function cleanRedirectUrl() {
-            return window.location.href.split("#")[0];
-        }
-
-        function isIdTokenExpired() {
-            try {
-                const decoded = liff.getDecodedIDToken();
-
-                if (!decoded || !decoded.exp) {
-                    return true;
-                }
-
-                const now = Math.floor(Date.now() / 1000);
-
-                return decoded.exp <= now + 60;
-
-            } catch (err) {
-                console.warn("IDトークン確認エラー:", err);
-                return true;
-            }
-        }
-
-        async function getValidLineIdToken() {
-            if (!liff.isLoggedIn()) {
-                liff.login({
-                    redirectUri: cleanRedirectUrl()
-                });
-                throw new Error("LINEログインをやり直します。もう一度お試しください。");
-            }
-
-            if (isIdTokenExpired()) {
-                alert("LINEログイン情報の有効期限が切れました。再ログインします。");
-
-                try {
-                    liff.logout();
-                } catch (err) {
-                    console.warn("LIFF logout skipped:", err);
-                }
-
-                liff.login({
-                    redirectUri: cleanRedirectUrl()
-                });
-
-                throw new Error("LINEログイン情報の有効期限が切れました。再ログイン後にもう一度お試しください。");
-            }
-
-            const idToken = liff.getIDToken();
-
-            if (!idToken) {
-                throw new Error("LINE IDトークンを取得できませんでした。LIFFのスコープ設定を確認してください。");
-            }
-
-            return idToken;
-        }
-
-        function handleAuthExpiredError(err) {
-            const message = err?.message || "";
-
-            if (
-                message.includes("IdToken expired") ||
-                message.includes("ID token expired") ||
-                message.includes("expired")
-            ) {
-                alert("LINEログイン情報の有効期限が切れました。再ログインします。");
-
-                try {
-                    liff.logout();
-                } catch (logoutErr) {
-                    console.warn("LIFF logout skipped:", logoutErr);
-                }
-
-                liff.login({
-                    redirectUri: cleanRedirectUrl()
-                });
-
-                return true;
-            }
-
-            return false;
-        }
-
-        function switchTab(tab) {
-            const resTab = document.getElementById("btn-reserve");
-            const histTab = document.getElementById("btn-history");
-            const resCont = document.getElementById("tab-reserve-content");
-            const histCont = document.getElementById("tab-history-content");
-
-            if (tab === "reserve") {
-                resTab.classList.add("tab-active");
-                histTab.classList.remove("tab-active");
-                resCont.classList.remove("hidden");
-                histCont.classList.add("hidden");
-            } else {
-                resTab.classList.remove("tab-active");
-                histTab.classList.add("tab-active");
-                resCont.classList.add("hidden");
-                histCont.classList.remove("hidden");
-                loadHistory();
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", async () => {
-            fp = flatpickr("#reserve-date", {
-                locale: "ja",
-                minDate: new Date(),
-                dateFormat: "Y-m-d",
-                disableMobile: true
-            });
-
-            changeFp = flatpickr("#change-date", {
-                locale: "ja",
-                minDate: new Date(),
-                dateFormat: "Y-m-d",
-                disableMobile: true
-            });
-
-            try {
-                await liff.init({ liffId: LIFF_ID });
-
-                if (!liff.isLoggedIn()) {
-                    liff.login({
-                        redirectUri: cleanRedirectUrl()
-                    });
-                    return;
-                }
-
-                userProfile = await liff.getProfile();
-
-                document.getElementById("user-img").src =
-                    userProfile.pictureUrl || "https://via.placeholder.com/150";
-
-                document.getElementById("user-name").innerText =
-                    `${userProfile.displayName} 様`;
-
-                await loadPublicSettings();
-                await listenShopStatus();
-
-                setInterval(listenShopStatus, 30000);
-
-                document.getElementById("loading").style.display = "none";
-                document.getElementById("app").classList.remove("hidden");
-
-            } catch (err) {
-                console.error("LIFF初期化エラー:", err);
-
-                document.getElementById("loading").style.display = "none";
-                document.getElementById("app").classList.remove("hidden");
-
-                alert(
-                    "LIFFの初期化に失敗しました。\n" +
-                    "LINEアプリ内から開いているか確認してください。\n\n" +
-                    err.message
-                );
-            }
-        });
-
-        async function loadPublicSettings() {
-            try {
-                const data = await apiFetch("/api/public/settings");
-
-                const closedDates = [];
-                const closedWeekdays = [];
-
-                if (Array.isArray(data.specialDays)) {
-                    data.specialDays.forEach(day => {
-                        if (day.is_closed) {
-                            closedDates.push(day.target_date);
-                        }
-                    });
-                }
-
-                if (Array.isArray(data.businessHours)) {
-                    data.businessHours.forEach(day => {
-                        if (day.is_closed) {
-                            closedWeekdays.push(day.dow);
-                        }
-                    });
-                }
-
-                const disableRules = [
-                    ...closedDates,
-                    function(date) {
-                        return closedWeekdays.includes(date.getDay());
-                    }
-                ];
-
-                if (fp) {
-                    fp.set("disable", disableRules);
-                }
-
-                if (changeFp) {
-                    changeFp.set("disable", disableRules);
-                }
-
-            } catch (err) {
-                console.error("店舗設定取得エラー:", err);
-            }
-        }
-
-        async function listenShopStatus() {
-            try {
-                const data = await apiFetch("/api/public/status");
-
-                if (data.status) {
-                    applyUI(data.status.status, data.status.message);
-                }
-
-            } catch (err) {
-                console.error("店舗ステータス取得エラー:", err);
-            }
-        }
-
-        function applyUI(statusCode, message) {
-            const banner = document.getElementById("status-banner");
-            const inputT = document.getElementById("input-tonight");
-            const textT = document.getElementById("tonight-text");
-            const iconT = document.getElementById("tonight-icon");
-
-            const label = message || SHOP_STATUS_LABELS[statusCode] || statusCode;
-
-            banner.classList.remove("hidden");
-
-            if (statusCode === "full" || statusCode === "closed") {
-                banner.innerText =
-                    statusCode === "full"
-                        ? "🚨 本日は満席です。現在、今夜の空席予約は受付停止中です。"
-                        : "🚨 本日は受付停止中です。";
-
-                banner.className =
-                    "p-4 rounded-xl text-xs font-bold text-center border-2 border-red-100 bg-red-50 text-red-600 mb-6";
-
-                inputT.disabled = true;
-                textT.innerText = "受付停止";
-                iconT.innerText = "🛑";
-
-            } else {
-                banner.innerText = `✨ 今夜は【${label}】です。`;
-
-                banner.className =
-                    "p-4 rounded-xl text-xs font-bold text-center border-2 border-amber-100 bg-amber-50 text-amber-700 mb-6";
-
-                inputT.disabled = false;
-                textT.innerText = "今夜の空席";
-                iconT.innerText = "⚡";
-            }
-        }
-
-        function toggleType(type) {
-            if (type === "tonight") {
-                fp.setDate(new Date());
-                document.getElementById("date-group").classList.add("opacity-40", "pointer-events-none");
-            } else {
-                document.getElementById("date-group").classList.remove("opacity-40", "pointer-events-none");
-                fp.clear();
-            }
-        }
-
-        async function loadHistory() {
-            const listEl = document.getElementById("reservation-list");
-
-            listEl.innerHTML =
-                '<p class="text-center text-stone-400 py-12 text-sm animate-pulse">照会中...</p>';
-
-            try {
-                const idToken = await getValidLineIdToken();
-
-                const data = await apiFetch("/api/reservations/my", {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${idToken}`
-                    }
-                });
-
-                currentReservations = data.reservations || [];
-
-                if (!currentReservations.length) {
-                    listEl.innerHTML =
-                        '<p class="text-center text-stone-400 py-12 text-sm">現在の予約はありません</p>';
-                    return;
-                }
-
-                listEl.innerHTML = currentReservations.map(res => {
-                    const statusLabel = RESERVATION_STATUS_LABELS[res.status] || res.status;
-                    const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
-
-                    let statusClass = "bg-amber-600";
-
-                    if (res.status === "confirmed") {
-                        statusClass = "bg-emerald-600";
-                    }
-
-                    const prefsHtml =
-                        Array.isArray(res.preferences) && res.preferences.length
-                            ? res.preferences.map(p =>
-                                `<span class="bg-stone-100 text-stone-500 text-[10px] px-2 py-0.5 rounded-full">${escapeHtml(p)}</span>`
-                            ).join(" ")
-                            : '<span class="text-[10px] text-stone-300">好みなし</span>';
-
-                    const actionButtons =
-                        ["pending", "confirmed"].includes(res.status)
-                            ? `
-                                <div class="grid grid-cols-1 gap-2 mt-4">
-                                    <button
-                                        onclick="openChangeModal('${escapeJs(res.id)}')"
-                                        class="w-full bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-3 rounded-xl text-xs active:scale-95 transition"
-                                    >
-                                        この予約を変更する
-                                    </button>
-
-                                    <button
-                                        onclick="cancelReservation('${escapeJs(res.id)}', '${escapeJs(res.reserve_date)}', '${escapeJs(formatTime(res.reserve_time))}')"
-                                        class="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-3 rounded-xl text-xs active:scale-95 transition"
-                                    >
-                                        この予約をキャンセルする
-                                    </button>
-                                </div>
-                            `
-                            : "";
-
-                    return `
-                        <div class="border rounded-xl p-4 bg-stone-50 border-stone-100 relative shadow-sm">
-                            <span class="absolute top-4 right-4 text-[10px] px-2 py-1 rounded ${statusClass} text-white font-bold">
-                                ${statusLabel}
-                            </span>
-
-                            <p class="text-[10px] text-stone-400 mb-1">ご予約</p>
-
-                            <p class="font-bold text-stone-700">
-                                ${escapeHtml(res.reserve_date)}
-                                <span class="text-amber-600">${escapeHtml(formatTime(res.reserve_time))}〜</span>
-                            </p>
-
-                            <p class="text-xs text-stone-500 mt-1">
-                                👤 ${escapeHtml(res.party_size)}名様 / 🪑 ${escapeHtml(seatLabel)}
-                            </p>
-
-                            <div class="mt-2 flex flex-wrap gap-1">
-                                ${prefsHtml}
-                            </div>
-
-                            ${actionButtons}
-                        </div>
-                    `;
-                }).join("");
-
-            } catch (err) {
-                console.error("予約履歴取得エラー:", err);
-
-                if (handleAuthExpiredError(err)) {
-                    return;
-                }
-
-                listEl.innerHTML =
-                    `<p class="text-center text-red-500 py-12 text-sm">エラー: ${escapeHtml(err.message)}</p>`;
-            }
-        }
-
-        async function cancelReservation(reservationId, reserveDate, reserveTime) {
-            try {
-                const reason = prompt(
-                    `予約をキャンセルします。\n\n日時：${reserveDate} ${reserveTime}\n\nキャンセル理由を入力してください。`,
-                    "都合が悪くなったため"
-                );
-
-                if (reason === null) {
-                    return;
-                }
-
-                const trimmedReason = reason.trim() || "顧客都合";
-
-                if (!confirm(`この予約をキャンセルしますか？\n\n理由：${trimmedReason}`)) {
-                    return;
-                }
-
-                const idToken = await getValidLineIdToken();
-
-                const data = await apiFetch("/api/reservations/cancel", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        idToken,
-                        reservationId,
-                        reason: trimmedReason
-                    })
-                });
-
-                if (typeof liff !== "undefined" && liff.isInClient()) {
-                    try {
-                        await liff.sendMessages([{
-                            type: "text",
-                            text:
-                                `🏮 予約キャンセル受付\n\n` +
-                                `日時：${reserveDate} ${reserveTime}\n` +
-                                `理由：${trimmedReason}\n\n` +
-                                `予約をキャンセルしました。`
-                        }]);
-                    } catch (msgErr) {
-                        console.warn("LIFFメッセージ送信はスキップされました:", msgErr);
-                    }
-                }
-
-                alert(data.result?.message || "予約をキャンセルしました。");
-                await loadHistory();
-
-            } catch (err) {
-                console.error("キャンセルエラー:", err);
-
-                if (handleAuthExpiredError(err)) {
-                    return;
-                }
-
-                alert("キャンセルできませんでした。\n" + err.message);
-            }
-        }
-
-        function openChangeModal(reservationId) {
-            const reservation = currentReservations.find(res => res.id === reservationId);
-
-            if (!reservation) {
-                alert("変更対象の予約が見つかりません。");
-                return;
-            }
-
-            document.getElementById("change-reservation-id").value = reservation.id;
-
-            document.getElementById("change-current-text").innerText =
-                `現在：${reservation.reserve_date} ${formatTime(reservation.reserve_time)} / ${reservation.party_size}名 / ${SEAT_LABELS[reservation.seat_type] || "指定なし"}`;
-
-            if (changeFp) {
-                changeFp.setDate(reservation.reserve_date);
-            } else {
-                document.getElementById("change-date").value = reservation.reserve_date;
-            }
-
-            document.getElementById("change-time").value = formatTime(reservation.reserve_time);
-            document.getElementById("change-party-size").value = String(reservation.party_size || 2);
-
-            const seatValue = reservation.seat_type || "any";
-            document.querySelectorAll('input[name="change-seat-type"]').forEach(input => {
-                input.checked = input.value === seatValue;
-            });
-
-            if (!document.querySelector('input[name="change-seat-type"]:checked')) {
-                document.querySelector('input[name="change-seat-type"][value="any"]').checked = true;
-            }
-
-            document.querySelectorAll('input[name="change-preferences"]').forEach(input => {
-                input.checked = Array.isArray(reservation.preferences)
-                    ? reservation.preferences.includes(input.value)
-                    : false;
-            });
-
-            document.getElementById("change-reason").value = "予約内容を変更したいため";
-            document.getElementById("change-modal").classList.remove("hidden");
-        }
-
-        function closeChangeModal() {
-            document.getElementById("change-modal").classList.add("hidden");
-        }
-
-        document.getElementById("change-form").addEventListener("submit", async (e) => {
-            e.preventDefault();
-
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-
-            submitBtn.disabled = true;
-            submitBtn.innerText = "変更中...";
-
-            try {
-                const idToken = await getValidLineIdToken();
-
-                const oldReservationId = document.getElementById("change-reservation-id").value;
-                const reserveDate = document.getElementById("change-date").value;
-                const reserveTime = document.getElementById("change-time").value;
-                const partySize = parseInt(document.getElementById("change-party-size").value, 10);
-                const seatType = document.querySelector('input[name="change-seat-type"]:checked')?.value || "any";
-                const reason = document.getElementById("change-reason").value.trim() || "顧客による予約変更";
-
-                const preferences = Array.from(
-                    document.querySelectorAll('input[name="change-preferences"]:checked')
-                ).map(input => input.value);
-
-                if (!oldReservationId) {
-                    throw new Error("変更対象の予約がありません");
-                }
-
-                if (!reserveDate) {
-                    throw new Error("変更後の日付を選択してください");
-                }
-
-                if (!reserveTime) {
-                    throw new Error("変更後の時間を選択してください");
-                }
-
-                if (!partySize || partySize < 1) {
-                    throw new Error("変更後の人数を選択してください");
-                }
-
-                if (!confirm(`予約を変更しますか？\n\n変更後：${reserveDate} ${reserveTime} / ${partySize}名\n理由：${reason}`)) {
-                    return;
-                }
-
-                const data = await apiFetch("/api/reservations/change", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        idToken,
-                        oldReservationId,
-                        reserveDate,
-                        reserveTime,
-                        partySize,
-                        seatType,
-                        preferences,
-                        reason
-                    })
-                });
-
-                if (typeof liff !== "undefined" && liff.isInClient()) {
-                    try {
-                        await liff.sendMessages([{
-                            type: "text",
-                            text:
-                                `🏮 予約変更受付\n\n` +
-                                `変更後：${reserveDate} ${reserveTime}\n` +
-                                `人数：${partySize}名\n` +
-                                `席種：${SEAT_LABELS[seatType] || "指定なし"}\n` +
-                                `理由：${reason}\n\n` +
-                                `店舗からの確定連絡をお待ちください。`
-                        }]);
-                    } catch (msgErr) {
-                        console.warn("LIFFメッセージ送信はスキップされました:", msgErr);
-                    }
-                }
-
-                alert(data.result?.message || "予約変更を受け付けました。店舗からの確定連絡をお待ちください。");
-
-                closeChangeModal();
-                await loadHistory();
-
-            } catch (err) {
-                console.error("予約変更エラー:", err);
-
-                if (handleAuthExpiredError(err)) {
-                    return;
-                }
-
-                alert("予約変更できませんでした。\n" + err.message);
-
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerText = "変更を送信する";
-            }
-        });
-
-        document.getElementById("reserve-form").addEventListener("submit", async (e) => {
-            e.preventDefault();
-
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-
-            submitBtn.disabled = true;
-            submitBtn.innerText = "送信中...";
-
-            try {
-                const idToken = await getValidLineIdToken();
-
-                const prefs = Array.from(
-                    document.querySelectorAll('input[name="preferences"]:checked')
-                ).map(el => el.value);
-
-                const seatValue = document.querySelector('input[name="seat_type"]:checked').value;
-                const reserveType = document.querySelector('input[name="reserve_type"]:checked').value;
-
-                const formData = {
-                    idToken,
-                    reserveDate: document.getElementById("reserve-date").value,
-                    reserveTime: document.getElementById("reserve-time").value,
-                    partySize: parseInt(document.getElementById("party-size").value, 10),
-                    seatType: mapSeatTypeToCode(seatValue),
-                    preferences: prefs,
-                    customerNote: reserveType
-                };
-
-                if (!formData.reserveDate) {
-                    throw new Error("来店日を選択してください");
-                }
-
-                if (!formData.reserveTime) {
-                    throw new Error("時間を選択してください");
-                }
-
-                const result = await apiFetch("/api/reservations/create", {
-                    method: "POST",
-                    body: JSON.stringify(formData)
-                });
-
-                const reserveResult = result.result || {};
-
-                if (typeof liff !== "undefined" && liff.isInClient()) {
-                    try {
-                        await liff.sendMessages([{
-                            type: "text",
-                            text:
-                                `🏮 予約申請完了\n\n` +
-                                `日時：${formData.reserveDate} ${formData.reserveTime}\n` +
-                                `人数：${formData.partySize}名\n` +
-                                `席種：${SEAT_LABELS[formData.seatType] || seatValue}\n\n` +
-                                `店舗からの確定連絡をお待ちください。`
-                        }]);
-                    } catch (msgErr) {
-                        console.warn("LIFFメッセージ送信はスキップされました:", msgErr);
-                    }
-
-                    alert(reserveResult.message || "予約申請を承りました。確定までお待ちください。");
-                    liff.closeWindow();
-
-                } else {
-                    alert(reserveResult.message || "予約申請を承りました。");
-                    window.location.reload();
-                }
-
-            } catch (err) {
-                console.error("送信エラー:", err);
-
-                if (handleAuthExpiredError(err)) {
-                    return;
-                }
-
-                alert("エラーが発生しました。\n" + err.message);
-
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerText = "予約内容を送信する";
-            }
-        });
     </script>
 </body>
 </html>
