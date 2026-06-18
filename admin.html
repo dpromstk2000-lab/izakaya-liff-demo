@@ -71,7 +71,6 @@
 
 <body class="bg-slate-100 text-slate-800 min-h-screen pb-24">
 
-  <!-- Toast -->
   <div id="toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white text-sm font-bold px-4 py-3 rounded-xl shadow-lg"></div>
 
   <!-- Login -->
@@ -431,10 +430,11 @@
     async function loadAll() {
       await Promise.allSettled([
         loadPublicStatus(),
-        loadAdminDay(),
         loadBusinessShifts(),
         loadSpecialDayShifts()
       ]);
+
+      await loadAdminDay();
     }
 
     async function adminFetch(path, options = {}) {
@@ -630,7 +630,10 @@
       const customer = Array.isArray(res.customer) ? res.customer[0] : res.customer;
       const customerStatus = customer?.status || "new";
       const customerMemo = customer?.memo || "";
-      const shiftLabel = detectShiftLabel(res.reserve_date, res.reserve_time);
+
+      const shiftLabel = getReservationShiftLabel(res);
+      const shiftCode = getReservationShiftCode(res);
+      const isSpecialDay = !!res.is_special_day;
 
       return `
         <article class="panel p-4">
@@ -638,8 +641,20 @@
             <div class="flex-1">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="text-xl font-black">${formatTime(res.reserve_time)}</span>
-                <span class="${reservationStatusClass(res.status)} text-xs font-black px-2 py-1 rounded-full border">${statusLabel}</span>
-                <span class="bg-blue-50 text-blue-700 border border-blue-200 text-xs font-black px-2 py-1 rounded-full">${escapeHtml(shiftLabel)}</span>
+
+                <span class="${reservationStatusClass(res.status)} text-xs font-black px-2 py-1 rounded-full border">
+                  ${statusLabel}
+                </span>
+
+                <span class="${shiftBadgeClass(shiftCode, isSpecialDay)} text-xs font-black px-2 py-1 rounded-full border">
+                  ${escapeHtml(shiftLabel)}
+                </span>
+
+                ${isSpecialDay ? `
+                  <span class="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-black px-2 py-1 rounded-full">
+                    特別日
+                  </span>
+                ` : ""}
               </div>
 
               <div class="mt-2">
@@ -704,6 +719,51 @@
           </div>
         </article>
       `;
+    }
+
+    function getReservationShiftLabel(res) {
+      if (res.shift_label) {
+        return res.shift_label;
+      }
+
+      return detectShiftLabel(res.reserve_date, res.reserve_time);
+    }
+
+    function getReservationShiftCode(res) {
+      if (res.shift_code) {
+        return res.shift_code;
+      }
+
+      const label = detectShiftLabel(res.reserve_date, res.reserve_time);
+
+      if (label.includes("昼")) return "lunch";
+      if (label.includes("夜")) return "dinner";
+      if (label.includes("特別")) return "special";
+      return "regular";
+    }
+
+    function shiftBadgeClass(shiftCode, isSpecialDay) {
+      if (isSpecialDay && shiftCode === "lunch") {
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      }
+
+      if (isSpecialDay && shiftCode === "dinner") {
+        return "bg-orange-50 text-orange-700 border-orange-200";
+      }
+
+      if (isSpecialDay || shiftCode === "special") {
+        return "bg-purple-50 text-purple-700 border-purple-200";
+      }
+
+      if (shiftCode === "lunch") {
+        return "bg-sky-50 text-sky-700 border-sky-200";
+      }
+
+      if (shiftCode === "dinner") {
+        return "bg-indigo-50 text-indigo-700 border-indigo-200";
+      }
+
+      return "bg-slate-100 text-slate-600 border-slate-200";
     }
 
     function reservationStatusClass(status) {
@@ -1000,6 +1060,7 @@
 
         showToast(data.result?.message || "通常営業枠を保存しました。");
         await loadBusinessShifts();
+        await loadAdminDay();
 
       } catch (err) {
         alert("通常営業枠を保存できませんでした。\n" + err.message);
@@ -1195,6 +1256,7 @@
 
         showToast(data.result?.message || "特別日設定を保存しました。");
         await loadSpecialDayShifts();
+        await loadAdminDay();
 
       } catch (err) {
         alert("特別日設定を保存できませんでした。\n" + err.message);
@@ -1217,6 +1279,7 @@
 
         showToast(data.result?.message || "特別日設定を削除しました。");
         await loadSpecialDayShifts();
+        await loadAdminDay();
 
       } catch (err) {
         alert("削除できませんでした。\n" + err.message);
