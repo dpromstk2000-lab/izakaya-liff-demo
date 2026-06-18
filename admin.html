@@ -104,27 +104,73 @@
             </p>
         </section>
 
-        <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-            <div class="flex justify-between items-start gap-4">
-                <div>
-                    <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
-                        LINE通知キュー送信
-                    </h2>
-                    <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                        queued の通知をLINE Messaging APIで送信します。成功すると sent、失敗すると failed になります。
-                    </p>
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-start gap-4">
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                            前日リマインド作成
+                        </h2>
+                        <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                            指定日の確定予約に対して、リマインド通知を queued で作成します。
+                        </p>
+                    </div>
                 </div>
 
-                <button
-                    id="btn-send-notifications"
-                    onclick="sendQueuedNotifications()"
-                    class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-3 rounded-xl text-xs shadow-sm active:scale-95 transition"
-                >
-                    📣 通知送信
-                </button>
+                <div class="mt-4 grid grid-cols-1 gap-2">
+                    <label class="text-xs font-bold text-slate-500">
+                        対象日
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <input
+                            id="reminder-target-date"
+                            type="date"
+                            class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-amber-500"
+                        >
+
+                        <button
+                            onclick="setTomorrowReminderDate()"
+                            class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold rounded-xl text-xs active:scale-95 transition"
+                        >
+                            明日に設定
+                        </button>
+                    </div>
+
+                    <button
+                        id="btn-enqueue-reminders"
+                        onclick="enqueueReminders()"
+                        class="mt-2 bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-3 rounded-xl text-xs shadow-sm active:scale-95 transition"
+                    >
+                        ⏰ 前日リマインド作成
+                    </button>
+                </div>
+
+                <div id="reminder-result" class="hidden mt-4 bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-600 whitespace-pre-wrap"></div>
             </div>
 
-            <div id="notification-result" class="hidden mt-4 bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-600 whitespace-pre-wrap"></div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex justify-between items-start gap-4">
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
+                            LINE通知キュー送信
+                        </h2>
+                        <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                            queued の通知をLINE Messaging APIで送信します。成功すると sent、失敗すると failed になります。
+                        </p>
+                    </div>
+
+                    <button
+                        id="btn-send-notifications"
+                        onclick="sendQueuedNotifications()"
+                        class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-3 rounded-xl text-xs shadow-sm active:scale-95 transition"
+                    >
+                        📣 通知送信
+                    </button>
+                </div>
+
+                <div id="notification-result" class="hidden mt-4 bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-600 whitespace-pre-wrap"></div>
+            </div>
         </section>
 
         <section class="bg-slate-900 text-white rounded-2xl shadow-lg overflow-hidden">
@@ -245,6 +291,8 @@
         let statusFilter = "all";
 
         window.addEventListener("DOMContentLoaded", () => {
+            setTomorrowReminderDate();
+
             if (!adminToken) {
                 showAuthPanel();
                 return;
@@ -353,6 +401,17 @@
         function formatTime(value) {
             if (!value) return "";
             return String(value).slice(0, 5);
+        }
+
+        function setTomorrowReminderDate() {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const input = document.getElementById("reminder-target-date");
+
+            if (input) {
+                input.value = formatDate(tomorrow);
+            }
         }
 
         function statusBadgeClass(status) {
@@ -484,6 +543,65 @@
             if (status === "few") activeButton.classList.add("bg-amber-600");
             if (status === "full") activeButton.classList.add("bg-red-600");
             if (status === "closed") activeButton.classList.add("bg-slate-700");
+        }
+
+        async function enqueueReminders() {
+            const button = document.getElementById("btn-enqueue-reminders");
+            const resultEl = document.getElementById("reminder-result");
+            const targetDate = document.getElementById("reminder-target-date").value;
+
+            if (!targetDate) {
+                alert("対象日を選択してください。");
+                return;
+            }
+
+            if (!confirm(`${targetDate} の確定予約に前日リマインドを作成しますか？`)) {
+                return;
+            }
+
+            button.disabled = true;
+            button.innerText = "作成中...";
+            resultEl.classList.remove("hidden");
+            resultEl.innerText = "前日リマインド作成中...";
+
+            try {
+                const data = await apiFetch("/api/admin/reminders/enqueue", {
+                    method: "POST",
+                    headers: adminHeaders(),
+                    body: JSON.stringify({
+                        targetDate,
+                        actorId: "admin_dashboard"
+                    })
+                });
+
+                const result = data.result || {};
+
+                const lines = [];
+                lines.push("前日リマインド作成結果");
+                lines.push(`対象日: ${result.target_date || result.targetDate || targetDate}`);
+                lines.push(`新規作成: ${result.inserted_count ?? 0}件`);
+                lines.push(`重複スキップ: ${result.skipped_count ?? 0}件`);
+
+                if (result.message) {
+                    lines.push("");
+                    lines.push(result.message);
+                }
+
+                lines.push("");
+                lines.push("次に「通知送信」を押すと、queued の通知がLINEに送信されます。");
+
+                resultEl.innerText = lines.join("\n");
+                showToast("前日リマインドを作成しました。");
+
+            } catch (err) {
+                console.error("前日リマインド作成エラー:", err);
+                resultEl.innerText = `前日リマインド作成エラー:\n${err.message}`;
+                alert("前日リマインドを作成できませんでした。\n" + err.message);
+
+            } finally {
+                button.disabled = false;
+                button.innerText = "⏰ 前日リマインド作成";
+            }
         }
 
         async function sendQueuedNotifications() {
