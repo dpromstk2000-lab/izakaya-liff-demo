@@ -82,6 +82,18 @@ export async function onRequest(context) {
       return await enqueueReminders(request, env);
     }
 
+    if (url.pathname === "/api/admin/special-days" && request.method === "GET") {
+      return await getAdminSpecialDays(request, env, url);
+    }
+
+    if (url.pathname === "/api/admin/special-days/upsert" && request.method === "POST") {
+      return await upsertSpecialDay(request, env);
+    }
+
+    if (url.pathname === "/api/admin/special-days/delete" && request.method === "POST") {
+      return await deleteSpecialDay(request, env);
+    }
+
     return jsonResponse({
       ok: false,
       error: "Not found",
@@ -218,6 +230,57 @@ async function verifyLineIdToken(env, idToken) {
     lineName: data.name || "LINEユーザー",
     picture: data.picture || null,
   };
+}
+
+function getJstDateString(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  const parts = formatter.formatToParts(date);
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+
+  return `${year}-${month}-${day}`;
+}
+
+function addMonthsToDateString(dateString, months) {
+  const date = new Date(`${dateString}T00:00:00+09:00`);
+  date.setMonth(date.getMonth() + months);
+
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function normalizeNullableString(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const text = String(value).trim();
+
+  return text ? text : null;
+}
+
+function normalizeNullableNumber(value) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const number = Number(value);
+
+  if (Number.isNaN(number)) {
+    return null;
+  }
+
+  return number;
 }
 
 // =========================================================
@@ -632,6 +695,100 @@ async function enqueueReminders(request, env) {
       body: JSON.stringify({
         p_shop_id: SHOP_ID,
         p_target_date: targetDate,
+        p_actor_id: body.actorId || "admin_dashboard",
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    result: Array.isArray(result) ? result[0] : result,
+  }, env);
+}
+
+// =========================================================
+// Special Day Admin APIs
+// =========================================================
+
+async function getAdminSpecialDays(request, env, url) {
+  requireAdmin(request, env);
+
+  const today = getJstDateString();
+  const defaultTo = addMonthsToDateString(today, 3);
+
+  const from = url.searchParams.get("from") || today;
+  const to = url.searchParams.get("to") || defaultTo;
+
+  const data = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_special_days?shop_id=eq.${SHOP_ID}&target_date=gte.${encodeURIComponent(from)}&target_date=lte.${encodeURIComponent(to)}&select=id,target_date,is_closed,open_time,close_time,last_order_time,slot_interval_minutes,max_guests_per_slot,max_groups_per_slot,note,created_at,updated_at&order=target_date.asc`
+  );
+
+  return jsonResponse({
+    ok: true,
+    from,
+    to,
+    specialDays: data || [],
+  }, env);
+}
+
+async function upsertSpecialDay(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+
+  if (!body.targetDate) {
+    throw new Error("対象日が必要です");
+  }
+
+  if (typeof body.isClosed !== "boolean") {
+    throw new Error("isClosed は true / false で指定してください");
+  }
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_upsert_special_day",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_target_date: String(body.targetDate).trim(),
+        p_is_closed: body.isClosed,
+        p_open_time: body.isClosed ? null : normalizeNullableString(body.openTime),
+        p_close_time: body.isClosed ? null : normalizeNullableString(body.closeTime),
+        p_last_order_time: body.isClosed ? null : normalizeNullableString(body.lastOrderTime),
+        p_slot_interval_minutes: body.isClosed ? null : normalizeNullableNumber(body.slotIntervalMinutes),
+        p_max_guests_per_slot: body.isClosed ? null : normalizeNullableNumber(body.maxGuestsPerSlot),
+        p_max_groups_per_slot: body.isClosed ? null : normalizeNullableNumber(body.maxGroupsPerSlot),
+        p_note: normalizeNullableString(body.note),
+        p_actor_id: body.actorId || "admin_dashboard",
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    result: Array.isArray(result) ? result[0] : result,
+  }, env);
+}
+
+async function deleteSpecialDay(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+
+  if (!body.targetDate) {
+    throw new Error("対象日が必要です");
+  }
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_delete_special_day",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_target_date: String(body.targetDate).trim(),
         p_actor_id: body.actorId || "admin_dashboard",
       }),
     }
