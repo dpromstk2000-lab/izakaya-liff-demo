@@ -47,6 +47,10 @@ export async function onRequest(context) {
       return await getMyReservations(request, env);
     }
 
+    if (url.pathname === "/api/reservations/cancel" && request.method === "POST") {
+      return await cancelMyReservation(request, env);
+    }
+
     // =========================
     // Admin APIs
     // =========================
@@ -292,6 +296,61 @@ async function getMyReservations(request, env) {
     ok: true,
     profile,
     reservations: data || [],
+  }, env);
+}
+
+async function cancelMyReservation(request, env) {
+  const body = await readJson(request);
+
+  const profile = await verifyLineIdToken(env, body.idToken);
+
+  if (!body.reservationId) {
+    throw new Error("reservationId が必要です");
+  }
+
+  const reservationId = encodeURIComponent(body.reservationId);
+
+  const reservations = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_reservations?id=eq.${reservationId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,status`
+  );
+
+  const reservation = reservations?.[0];
+
+  if (!reservation) {
+    throw new Error("予約が見つかりません");
+  }
+
+  if (reservation.line_user_id !== profile.lineUserId) {
+    throw new Error("この予約はキャンセルできません");
+  }
+
+  if (!["pending", "confirmed"].includes(reservation.status)) {
+    throw new Error("この予約はすでにキャンセル済み、または変更できない状態です");
+  }
+
+  const reason = body.reason || "顧客都合";
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_update_reservation_status",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_reservation_id: body.reservationId,
+        p_new_status: "cancelled_customer",
+        p_actor_id: profile.lineUserId,
+        p_reason: reason,
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    profile,
+    reservation,
+    result: Array.isArray(result) ? result[0] : result,
   }, env);
 }
 
