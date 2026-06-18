@@ -166,7 +166,9 @@
             <div class="flex justify-between items-end mb-3 px-1">
                 <div>
                     <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">タイムライン</h2>
-                    <p class="text-[10px] text-slate-400 mt-1">仮予約は「予約を確定する」で顧客通知キューに入ります。</p>
+                    <p class="text-[10px] text-slate-400 mt-1">
+                        顧客ステータス・メモは予約者ごとに保存され、次回以降の予約にも反映されます。
+                    </p>
                 </div>
 
                 <button onclick="fetchReservations()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
@@ -354,6 +356,26 @@
             return "bg-slate-200 text-slate-600";
         }
 
+        function customerStatusBadgeClass(status) {
+            if (status === "vip") {
+                return "bg-purple-100 text-purple-700 border-purple-200";
+            }
+
+            if (status === "regular") {
+                return "bg-emerald-100 text-emerald-700 border-emerald-200";
+            }
+
+            if (status === "caution") {
+                return "bg-amber-100 text-amber-700 border-amber-200";
+            }
+
+            if (status === "blocked") {
+                return "bg-red-100 text-red-700 border-red-200";
+            }
+
+            return "bg-slate-100 text-slate-600 border-slate-200";
+        }
+
         function normalizeCustomer(customer) {
             if (Array.isArray(customer)) {
                 return customer[0] || null;
@@ -491,7 +513,7 @@
                 console.error("予約取得エラー:", err);
 
                 listEl.innerHTML =
-                    `<p class="text-center text-red-500 py-8 text-sm">取得エラー: ${err.message}</p>`;
+                    `<p class="text-center text-red-500 py-8 text-sm">取得エラー: ${escapeHtml(err.message)}</p>`;
             }
         }
 
@@ -552,19 +574,16 @@
                 const statusLabel = STATUS_LABELS[res.status] || res.status;
                 const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
 
+                const customerStatus = customer?.status || "new";
+                const customerStatusLabel = CUSTOMER_STATUS_LABELS[customerStatus] || customerStatus;
+                const customerMemo = customer?.memo || "";
+
                 const prefsHtml =
                     Array.isArray(res.preferences) && res.preferences.length
                         ? res.preferences.map(p =>
                             `<span class="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full">${escapeHtml(p)}</span>`
                         ).join(" ")
                         : '<span class="text-[10px] text-slate-300">好みなし</span>';
-
-                const customerStatus = customer?.status || "new";
-                const customerStatusLabel = CUSTOMER_STATUS_LABELS[customerStatus] || customerStatus;
-
-                const memoHtml = customer?.memo
-                    ? `<p class="mt-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">📝 ${escapeHtml(customer.memo)}</p>`
-                    : "";
 
                 const noteHtml = res.customer_note
                     ? `<p class="mt-2 text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">要望: ${escapeHtml(res.customer_note)}</p>`
@@ -597,6 +616,10 @@
                                         ${escapeHtml(res.line_name || "名前未取得")} 様
                                     </h3>
 
+                                    <span class="text-[10px] px-2 py-1 rounded-full border font-bold ${customerStatusBadgeClass(customerStatus)}">
+                                        ${customerStatusLabel}
+                                    </span>
+
                                     <button onclick="copyText('${escapeJs(res.line_name || "")}', '名前')" class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-full">
                                         名前コピー
                                     </button>
@@ -607,8 +630,7 @@
                                 </p>
 
                                 <p class="text-[10px] text-slate-400 mt-1">
-                                    顧客: ${customerStatusLabel}
-                                    / 来店 ${customer?.visit_count ?? 0}回
+                                    来店 ${customer?.visit_count ?? 0}回
                                     / 無断 ${customer?.no_show_count ?? 0}回
                                 </p>
 
@@ -617,9 +639,47 @@
                                 </div>
 
                                 ${noteHtml}
-                                ${memoHtml}
                                 ${cancelReasonHtml}
                             </div>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-100 rounded-xl p-3 mt-3">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <p class="text-xs font-bold text-slate-500">顧客管理</p>
+                                <button
+                                    onclick="saveCustomerAdmin('${escapeJs(res.id)}', '${escapeJs(res.line_user_id || "")}')"
+                                    class="text-[10px] bg-slate-900 text-white font-bold px-3 py-1.5 rounded-full active:scale-95 transition"
+                                >
+                                    保存
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <select
+                                    id="customer-status-${escapeHtml(res.id)}"
+                                    class="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white outline-none"
+                                >
+                                    <option value="new" ${customerStatus === "new" ? "selected" : ""}>新規</option>
+                                    <option value="regular" ${customerStatus === "regular" ? "selected" : ""}>常連</option>
+                                    <option value="vip" ${customerStatus === "vip" ? "selected" : ""}>VIP</option>
+                                    <option value="caution" ${customerStatus === "caution" ? "selected" : ""}>注意</option>
+                                    <option value="blocked" ${customerStatus === "blocked" ? "selected" : ""}>ブロック</option>
+                                </select>
+
+                                <button
+                                    onclick="openLineManager()"
+                                    class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 font-bold py-2 rounded-lg text-xs transition"
+                                >
+                                    LINE管理
+                                </button>
+                            </div>
+
+                            <textarea
+                                id="customer-memo-${escapeHtml(res.id)}"
+                                rows="2"
+                                class="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white outline-none"
+                                placeholder="顧客メモ：好み、注意点、個室希望など"
+                            >${escapeHtml(customerMemo)}</textarea>
                         </div>
 
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100">
@@ -688,6 +748,47 @@
                     LINE管理
                 </button>
             `;
+        }
+
+        async function saveCustomerAdmin(reservationId, lineUserId) {
+            if (!lineUserId) {
+                alert("LINEユーザーIDが見つかりません。");
+                return;
+            }
+
+            const statusEl = document.getElementById(`customer-status-${reservationId}`);
+            const memoEl = document.getElementById(`customer-memo-${reservationId}`);
+
+            const status = statusEl?.value || "new";
+            const memo = memoEl?.value || "";
+
+            const label = CUSTOMER_STATUS_LABELS[status] || status;
+
+            if (status === "blocked") {
+                if (!confirm("この顧客をブロックにしますか？\n\nブロックにすると、次回以降の予約作成が拒否されます。")) {
+                    return;
+                }
+            }
+
+            try {
+                await apiFetch("/api/admin/customer", {
+                    method: "POST",
+                    headers: adminHeaders(),
+                    body: JSON.stringify({
+                        lineUserId,
+                        status,
+                        memo,
+                        actorId: "admin_dashboard"
+                    })
+                });
+
+                showToast(`顧客情報を「${label}」で保存しました。`);
+                await fetchReservations();
+
+            } catch (err) {
+                console.error("顧客情報保存エラー:", err);
+                alert("顧客情報を保存できませんでした。\n" + err.message);
+            }
         }
 
         async function changeReservationStatus(reservationId, newStatus) {
