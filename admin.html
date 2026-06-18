@@ -91,7 +91,7 @@
                     <div>
                         <h2 class="text-lg font-bold">⚙ 店舗設定</h2>
                         <p class="text-[10px] text-slate-400 mt-1">
-                            通常営業時間・定休日・臨時休業・特別営業日
+                            通常営業枠・定休日・臨時休業・特別営業日
                         </p>
                     </div>
 
@@ -106,33 +106,70 @@
 
             <div class="p-4 space-y-5">
 
-                <!-- 通常営業時間・定休日 -->
+                <!-- 営業枠設定 -->
                 <section class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                     <div class="flex justify-between items-start gap-4 mb-4">
                         <div>
                             <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">
-                                通常営業時間・定休日
+                                通常営業枠・定休日
                             </h3>
                             <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                                通常の曜日別設定です。特別日設定がある日は、特別日が優先されます。
+                                昼営業・夜営業の2部制に対応します。定休日は曜日ごとに設定できます。
                             </p>
                         </div>
 
-                        <button onclick="fetchBusinessHours()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                        <button onclick="fetchBusinessShifts()" class="text-xs text-blue-600 font-bold bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                             🔄 更新
                         </button>
                     </div>
 
-                    <div id="business-hours-list" class="space-y-3">
+                    <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-4">
+                        <p class="text-xs font-bold text-slate-500 mb-2">営業モード</p>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="business-mode"
+                                    value="dinner_only"
+                                    class="peer hidden"
+                                    onchange="updateAllBusinessShiftStates()"
+                                    checked
+                                >
+                                <div class="peer-checked:bg-slate-900 peer-checked:text-white bg-white border border-slate-200 rounded-xl p-3 text-center text-xs font-bold transition">
+                                    夜のみ
+                                </div>
+                            </label>
+
+                            <label class="cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="business-mode"
+                                    value="two_shifts"
+                                    class="peer hidden"
+                                    onchange="updateAllBusinessShiftStates()"
+                                >
+                                <div class="peer-checked:bg-slate-900 peer-checked:text-white bg-white border border-slate-200 rounded-xl p-3 text-center text-xs font-bold transition">
+                                    昼・夜の2部制
+                                </div>
+                            </label>
+                        </div>
+
+                        <p class="text-[10px] text-slate-400 mt-2">
+                            ※「夜のみ」の場合は昼営業枠を自動でOFFにします。
+                        </p>
+                    </div>
+
+                    <div id="business-shifts-list" class="space-y-3">
                         <p class="text-center text-slate-400 text-xs py-4">読み込み中...</p>
                     </div>
 
                     <button
-                        id="btn-save-business-hours"
-                        onclick="saveBusinessHours()"
+                        id="btn-save-business-shifts"
+                        onclick="saveBusinessShifts()"
                         class="w-full mt-4 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl text-xs active:scale-95 transition"
                     >
-                        通常営業時間を保存する
+                        通常営業枠を保存する
                     </button>
                 </section>
 
@@ -144,7 +181,7 @@
                                 直近3か月の休業日・特別営業日
                             </h3>
                             <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                                年末年始、臨時休業、貸切営業、特別営業時間を設定できます。休業日は顧客LIFFの予約カレンダーで選択不可になります。
+                                年末年始、臨時休業、貸切営業、特別営業時間を設定できます。
                             </p>
                         </div>
 
@@ -157,20 +194,12 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1">対象日</label>
-                                <input
-                                    id="special-day-date"
-                                    type="date"
-                                    class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
-                                >
+                                <input id="special-day-date" type="date" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500">
                             </div>
 
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1">種別</label>
-                                <select
-                                    id="special-day-type"
-                                    onchange="toggleSpecialDayType()"
-                                    class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
-                                >
+                                <select id="special-day-type" onchange="toggleSpecialDayType()" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500">
                                     <option value="closed">臨時休業</option>
                                     <option value="open">特別営業</option>
                                 </select>
@@ -178,12 +207,7 @@
 
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-1">メモ</label>
-                                <input
-                                    id="special-day-note"
-                                    type="text"
-                                    class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500"
-                                    placeholder="例：年末年始休み / 貸切営業"
-                                >
+                                <input id="special-day-note" type="text" class="w-full border border-slate-300 rounded-xl p-3 text-sm bg-white outline-none focus:ring-2 focus:ring-amber-500" placeholder="例：年末年始休み / 貸切営業">
                             </div>
                         </div>
 
@@ -468,12 +492,37 @@
             { dow: 6, label: "土", full: "土曜日" }
         ];
 
+        const SHIFT_DEFS = [
+            {
+                code: "lunch",
+                label: "昼営業",
+                icon: "☀️",
+                sortOrder: 10,
+                open: "11:30",
+                close: "14:30",
+                last: "14:00",
+                guests: 12,
+                groups: 5
+            },
+            {
+                code: "dinner",
+                label: "夜営業",
+                icon: "🌙",
+                sortOrder: 20,
+                open: "17:00",
+                close: "23:00",
+                last: "22:30",
+                guests: 20,
+                groups: 8
+            }
+        ];
+
         let targetDate = new Date();
         let adminToken = localStorage.getItem("iz_demo_admin_token") || "";
         let currentReservations = [];
         let statusFilter = "all";
         let currentSpecialDays = [];
-        let currentBusinessHours = [];
+        let currentBusinessShifts = [];
 
         window.addEventListener("DOMContentLoaded", () => {
             setTomorrowReminderDate();
@@ -618,7 +667,7 @@
 
             document.getElementById("settings-panel").classList.remove("hidden");
 
-            fetchBusinessHours();
+            fetchBusinessShifts();
             fetchSpecialDays();
         }
 
@@ -626,164 +675,282 @@
             document.getElementById("settings-panel").classList.add("hidden");
         }
 
-        async function fetchBusinessHours() {
-            const listEl = document.getElementById("business-hours-list");
+        function getBusinessMode() {
+            const checked = document.querySelector('input[name="business-mode"]:checked');
+            return checked?.value || "dinner_only";
+        }
+
+        function setBusinessMode(mode) {
+            const input = document.querySelector(`input[name="business-mode"][value="${mode}"]`);
+            if (input) input.checked = true;
+        }
+
+        function defaultShift(dow, code) {
+            const def = SHIFT_DEFS.find(item => item.code === code);
+
+            return {
+                dow,
+                shift_code: code,
+                shift_label: def.label,
+                is_enabled: code === "dinner",
+                open_time: `${def.open}:00`,
+                close_time: `${def.close}:00`,
+                last_order_time: `${def.last}:00`,
+                slot_interval_minutes: 30,
+                max_guests_per_slot: def.guests,
+                max_groups_per_slot: def.groups,
+                sort_order: def.sortOrder,
+                note: ""
+            };
+        }
+
+        function normalizeBusinessShifts(rows) {
+            const map = new Map();
+
+            (rows || []).forEach(row => {
+                const key = `${Number(row.dow)}:${row.shift_code}`;
+                map.set(key, row);
+            });
+
+            const result = [];
+
+            WEEKDAYS.forEach(day => {
+                SHIFT_DEFS.forEach(def => {
+                    const key = `${day.dow}:${def.code}`;
+                    result.push(map.get(key) || defaultShift(day.dow, def.code));
+                });
+            });
+
+            return result;
+        }
+
+        function getShift(dow, code) {
+            return currentBusinessShifts.find(row =>
+                Number(row.dow) === Number(dow) &&
+                row.shift_code === code
+            ) || defaultShift(dow, code);
+        }
+
+        async function fetchBusinessShifts() {
+            const listEl = document.getElementById("business-shifts-list");
 
             listEl.innerHTML = '<p class="text-center text-slate-400 text-xs py-4 animate-pulse">読み込み中...</p>';
 
             try {
-                const data = await apiFetch("/api/admin/business-hours", {
+                const data = await apiFetch("/api/admin/business-shifts", {
                     method: "GET",
                     headers: adminHeaders()
                 });
 
-                const rows = data.businessHours || [];
-                const map = new Map(rows.map(row => [Number(row.dow), row]));
+                currentBusinessShifts = normalizeBusinessShifts(data.businessShifts || []);
 
-                currentBusinessHours = WEEKDAYS.map(day => {
-                    return map.get(day.dow) || {
-                        dow: day.dow,
-                        is_closed: false,
-                        open_time: "17:00:00",
-                        close_time: "23:00:00",
-                        last_order_time: "22:30:00",
-                        slot_interval_minutes: 30,
-                        max_guests_per_slot: 20,
-                        max_groups_per_slot: 8,
-                        note: ""
-                    };
-                });
+                const hasLunchEnabled = currentBusinessShifts.some(row =>
+                    row.shift_code === "lunch" && row.is_enabled
+                );
 
-                renderBusinessHours();
+                setBusinessMode(hasLunchEnabled ? "two_shifts" : "dinner_only");
+                renderBusinessShifts();
 
             } catch (err) {
-                console.error("通常営業時間取得エラー:", err);
+                console.error("営業枠取得エラー:", err);
                 listEl.innerHTML = `<p class="text-center text-red-500 text-xs py-4">取得エラー: ${escapeHtml(err.message)}</p>`;
             }
         }
 
-        function renderBusinessHours() {
-            const listEl = document.getElementById("business-hours-list");
+        function renderBusinessShifts() {
+            const listEl = document.getElementById("business-shifts-list");
 
-            listEl.innerHTML = currentBusinessHours.map(row => {
-                const dow = Number(row.dow);
-                const weekday = WEEKDAYS.find(day => day.dow === dow);
-                const checked = row.is_closed ? "checked" : "";
+            listEl.innerHTML = WEEKDAYS.map(day => {
+                const lunch = getShift(day.dow, "lunch");
+                const dinner = getShift(day.dow, "dinner");
+                const isDayClosed = !lunch.is_enabled && !dinner.is_enabled;
 
                 return `
                     <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
                         <div class="flex justify-between items-center gap-3 mb-3">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold">
-                                    ${weekday?.label || dow}
+                                    ${day.label}
                                 </div>
                                 <div>
-                                    <p class="font-bold text-sm text-slate-700">${weekday?.full || ""}</p>
-                                    <p class="text-[10px] text-slate-400">通常営業設定</p>
+                                    <p class="font-bold text-sm text-slate-700">${day.full}</p>
+                                    <p class="text-[10px] text-slate-400">昼・夜の営業枠</p>
                                 </div>
                             </div>
 
                             <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
                                 <input
-                                    id="bh-closed-${dow}"
+                                    id="bs-day-closed-${day.dow}"
                                     type="checkbox"
-                                    ${checked}
-                                    onchange="updateBusinessHourRowState(${dow})"
+                                    ${isDayClosed ? "checked" : ""}
+                                    onchange="updateBusinessShiftDayState(${day.dow})"
                                     class="w-4 h-4"
                                 >
                                 定休日
                             </label>
                         </div>
 
-                        <div id="bh-fields-${dow}" class="space-y-3">
-                            <div class="grid grid-cols-3 gap-2">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">開店</label>
-                                    <input id="bh-open-${dow}" type="time" value="${formatTime(row.open_time) || "17:00"}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
-                                </div>
-
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">閉店</label>
-                                    <input id="bh-close-${dow}" type="time" value="${formatTime(row.close_time) || "23:00"}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
-                                </div>
-
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">L.O.</label>
-                                    <input id="bh-last-${dow}" type="time" value="${formatTime(row.last_order_time) || "22:30"}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-3 gap-2">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">時間刻み</label>
-                                    <select id="bh-slot-${dow}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
-                                        <option value="15" ${Number(row.slot_interval_minutes) === 15 ? "selected" : ""}>15分</option>
-                                        <option value="30" ${Number(row.slot_interval_minutes || 30) === 30 ? "selected" : ""}>30分</option>
-                                        <option value="60" ${Number(row.slot_interval_minutes) === 60 ? "selected" : ""}>60分</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">最大人数</label>
-                                    <input id="bh-guests-${dow}" type="number" min="0" value="${row.max_guests_per_slot ?? 20}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
-                                </div>
-
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">最大組数</label>
-                                    <input id="bh-groups-${dow}" type="number" min="0" value="${row.max_groups_per_slot ?? 8}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-400 mb-1">メモ</label>
-                                <input id="bh-note-${dow}" type="text" value="${escapeHtml(row.note || "")}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white" placeholder="例：通常営業 / ランチなし">
-                            </div>
+                        <div class="space-y-3">
+                            ${renderShiftBlock(day.dow, "lunch", lunch)}
+                            ${renderShiftBlock(day.dow, "dinner", dinner)}
                         </div>
                     </div>
                 `;
             }).join("");
 
-            WEEKDAYS.forEach(day => updateBusinessHourRowState(day.dow));
+            updateAllBusinessShiftStates();
         }
 
-        function updateBusinessHourRowState(dow) {
-            const checked = document.getElementById(`bh-closed-${dow}`)?.checked;
-            const fields = document.getElementById(`bh-fields-${dow}`);
+        function renderShiftBlock(dow, code, row) {
+            const def = SHIFT_DEFS.find(item => item.code === code);
+            const isEnabled = row.is_enabled ? "checked" : "";
 
-            if (!fields) return;
+            return `
+                <div id="bs-wrap-${code}-${dow}" class="bg-white border border-slate-200 rounded-xl p-3">
+                    <div class="flex justify-between items-center gap-2 mb-3">
+                        <p class="text-xs font-bold text-slate-700">
+                            ${def.icon} ${def.label}
+                        </p>
 
-            fields.classList.toggle("opacity-40", checked);
-            fields.classList.toggle("pointer-events-none", checked);
+                        <label id="bs-use-label-${code}-${dow}" class="flex items-center gap-2 text-[10px] font-bold text-slate-500 cursor-pointer">
+                            <input
+                                id="bs-use-${code}-${dow}"
+                                type="checkbox"
+                                ${isEnabled}
+                                onchange="updateBusinessShiftDayState(${dow})"
+                                class="w-4 h-4"
+                            >
+                            使う
+                        </label>
+                    </div>
+
+                    <div id="bs-fields-${code}-${dow}" class="space-y-3">
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">開店</label>
+                                <input id="bs-open-${code}-${dow}" type="time" value="${formatTime(row.open_time) || def.open}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">閉店</label>
+                                <input id="bs-close-${code}-${dow}" type="time" value="${formatTime(row.close_time) || def.close}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">L.O.</label>
+                                <input id="bs-last-${code}-${dow}" type="time" value="${formatTime(row.last_order_time) || def.last}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">時間刻み</label>
+                                <select id="bs-slot-${code}-${dow}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                                    <option value="15" ${Number(row.slot_interval_minutes) === 15 ? "selected" : ""}>15分</option>
+                                    <option value="30" ${Number(row.slot_interval_minutes || 30) === 30 ? "selected" : ""}>30分</option>
+                                    <option value="60" ${Number(row.slot_interval_minutes) === 60 ? "selected" : ""}>60分</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">最大人数</label>
+                                <input id="bs-guests-${code}-${dow}" type="number" min="0" value="${row.max_guests_per_slot ?? def.guests}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">最大組数</label>
+                                <input id="bs-groups-${code}-${dow}" type="number" min="0" value="${row.max_groups_per_slot ?? def.groups}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1">メモ</label>
+                            <input id="bs-note-${code}-${dow}" type="text" value="${escapeHtml(row.note || "")}" class="w-full border border-slate-300 rounded-lg p-2 text-xs bg-white" placeholder="例：昼宴会のみ / 通常営業">
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
-        async function saveBusinessHours() {
-            const button = document.getElementById("btn-save-business-hours");
+        function updateAllBusinessShiftStates() {
+            WEEKDAYS.forEach(day => updateBusinessShiftDayState(day.dow));
+        }
 
-            const hours = WEEKDAYS.map(day => {
-                const dow = day.dow;
-                const isClosed = document.getElementById(`bh-closed-${dow}`).checked;
+        function updateBusinessShiftDayState(dow) {
+            const mode = getBusinessMode();
+            const dayClosed = document.getElementById(`bs-day-closed-${dow}`)?.checked;
 
-                return {
-                    dow,
-                    isClosed,
-                    openTime: isClosed ? null : document.getElementById(`bh-open-${dow}`).value,
-                    closeTime: isClosed ? null : document.getElementById(`bh-close-${dow}`).value,
-                    lastOrderTime: isClosed ? null : document.getElementById(`bh-last-${dow}`).value,
-                    slotIntervalMinutes: isClosed ? null : document.getElementById(`bh-slot-${dow}`).value,
-                    maxGuestsPerSlot: isClosed ? null : document.getElementById(`bh-guests-${dow}`).value,
-                    maxGroupsPerSlot: isClosed ? null : document.getElementById(`bh-groups-${dow}`).value,
-                    note: document.getElementById(`bh-note-${dow}`).value
-                };
+            SHIFT_DEFS.forEach(def => {
+                const code = def.code;
+                const wrap = document.getElementById(`bs-wrap-${code}-${dow}`);
+                const useLabel = document.getElementById(`bs-use-label-${code}-${dow}`);
+                const useInput = document.getElementById(`bs-use-${code}-${dow}`);
+                const fields = document.getElementById(`bs-fields-${code}-${dow}`);
+
+                if (!wrap || !fields) return;
+
+                if (code === "lunch" && mode === "dinner_only") {
+                    wrap.classList.add("hidden");
+                    if (useInput) useInput.checked = false;
+                    return;
+                }
+
+                wrap.classList.remove("hidden");
+
+                if (code === "dinner" && mode === "dinner_only") {
+                    if (useInput) useInput.checked = !dayClosed;
+                    if (useLabel) useLabel.classList.add("hidden");
+                } else {
+                    if (useLabel) useLabel.classList.remove("hidden");
+                }
+
+                const shiftEnabled = !dayClosed && (useInput?.checked || false);
+
+                fields.classList.toggle("opacity-40", !shiftEnabled);
+                fields.classList.toggle("pointer-events-none", !shiftEnabled);
+                wrap.classList.toggle("opacity-60", dayClosed);
             });
+        }
 
-            for (const item of hours) {
-                if (!item.isClosed && (!item.openTime || !item.closeTime)) {
-                    alert(`${WEEKDAYS.find(day => day.dow === item.dow)?.full} の開店時間・閉店時間を入力してください。`);
+        async function saveBusinessShifts() {
+            const button = document.getElementById("btn-save-business-shifts");
+            const mode = getBusinessMode();
+            const shifts = [];
+
+            for (const day of WEEKDAYS) {
+                const dow = day.dow;
+                const dayClosed = document.getElementById(`bs-day-closed-${dow}`).checked;
+
+                let lunchEnabled = false;
+                let dinnerEnabled = false;
+
+                if (!dayClosed) {
+                    if (mode === "dinner_only") {
+                        lunchEnabled = false;
+                        dinnerEnabled = true;
+                    } else {
+                        lunchEnabled = document.getElementById(`bs-use-lunch-${dow}`).checked;
+                        dinnerEnabled = document.getElementById(`bs-use-dinner-${dow}`).checked;
+
+                        if (!lunchEnabled && !dinnerEnabled) {
+                            alert(`${day.full} は定休日ではないため、昼営業または夜営業のどちらかをONにしてください。`);
+                            return;
+                        }
+                    }
+                }
+
+                shifts.push(buildShiftPayload(dow, "lunch", lunchEnabled));
+                shifts.push(buildShiftPayload(dow, "dinner", dinnerEnabled));
+            }
+
+            for (const item of shifts) {
+                if (item.isEnabled && (!item.openTime || !item.closeTime)) {
+                    alert(`${WEEKDAYS.find(day => day.dow === item.dow)?.full} ${item.shiftLabel} の開店時間・閉店時間を入力してください。`);
                     return;
                 }
             }
 
-            if (!confirm("通常営業時間・定休日を保存しますか？")) {
+            if (!confirm("通常営業枠・定休日を保存しますか？")) {
                 return;
             }
 
@@ -791,26 +958,45 @@
             button.innerText = "保存中...";
 
             try {
-                const data = await apiFetch("/api/admin/business-hours/update", {
+                const data = await apiFetch("/api/admin/business-shifts/update", {
                     method: "POST",
                     headers: adminHeaders(),
                     body: JSON.stringify({
-                        hours,
+                        shifts,
                         actorId: "admin_dashboard"
                     })
                 });
 
-                showToast(data.result?.message || "通常営業時間を保存しました。");
-                await fetchBusinessHours();
+                showToast(data.result?.message || "通常営業枠を保存しました。");
+                await fetchBusinessShifts();
 
             } catch (err) {
-                console.error("通常営業時間保存エラー:", err);
-                alert("通常営業時間を保存できませんでした。\n" + err.message);
+                console.error("営業枠保存エラー:", err);
+                alert("通常営業枠を保存できませんでした。\n" + err.message);
 
             } finally {
                 button.disabled = false;
-                button.innerText = "通常営業時間を保存する";
+                button.innerText = "通常営業枠を保存する";
             }
+        }
+
+        function buildShiftPayload(dow, code, isEnabled) {
+            const def = SHIFT_DEFS.find(item => item.code === code);
+
+            return {
+                dow,
+                shiftCode: code,
+                shiftLabel: def.label,
+                isEnabled,
+                openTime: document.getElementById(`bs-open-${code}-${dow}`).value,
+                closeTime: document.getElementById(`bs-close-${code}-${dow}`).value,
+                lastOrderTime: document.getElementById(`bs-last-${code}-${dow}`).value,
+                slotIntervalMinutes: document.getElementById(`bs-slot-${code}-${dow}`).value,
+                maxGuestsPerSlot: document.getElementById(`bs-guests-${code}-${dow}`).value,
+                maxGroupsPerSlot: document.getElementById(`bs-groups-${code}-${dow}`).value,
+                sortOrder: def.sortOrder,
+                note: document.getElementById(`bs-note-${code}-${dow}`).value
+            };
         }
 
         function statusBadgeClass(status) {
