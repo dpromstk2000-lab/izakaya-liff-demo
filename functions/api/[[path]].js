@@ -297,6 +297,16 @@ function normalizeNullableString(value) {
   return text ? text : null;
 }
 
+function normalizeReservationName(value) {
+  const text = normalizeNullableString(value);
+
+  if (!text) {
+    return null;
+  }
+
+  return text.slice(0, 80);
+}
+
 function normalizeNullableNumber(value) {
   if (value === undefined || value === null || value === "") {
     return null;
@@ -386,6 +396,14 @@ function countByNotifyType(items) {
   return result;
 }
 
+function getDisplayReservationName(reservation) {
+  return (
+    normalizeNullableString(reservation?.reservation_name) ||
+    normalizeNullableString(reservation?.line_name) ||
+    "お客様"
+  );
+}
+
 // =========================================================
 // Public APIs
 // =========================================================
@@ -447,6 +465,8 @@ async function createReservation(request, env) {
 
   const profile = await verifyLineIdToken(env, body.idToken);
 
+  const reservationName = normalizeReservationName(body.reservationName);
+
   const result = await supabaseFetch(
     env,
     "/rest/v1/rpc/iz_demo_create_reservation",
@@ -462,6 +482,7 @@ async function createReservation(request, env) {
         p_seat_type: body.seatType || "any",
         p_preferences: Array.isArray(body.preferences) ? body.preferences : [],
         p_customer_note: body.customerNote || null,
+        p_reservation_name: reservationName,
       }),
     }
   );
@@ -469,6 +490,7 @@ async function createReservation(request, env) {
   return jsonResponse({
     ok: true,
     profile,
+    reservationName,
     result: Array.isArray(result) ? result[0] : result,
   }, env);
 }
@@ -481,15 +503,21 @@ async function getMyReservations(request, env) {
 
   const lineUserId = encodeURIComponent(profile.lineUserId);
 
-  const data = await supabaseFetch(
+  const reservations = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&line_user_id=eq.${lineUserId}&status=in.(pending,confirmed)&select=id,reserve_date,reserve_time,party_size,seat_type,preferences,status,customer_note,shift_code,shift_label,is_special_day,created_at,updated_at&order=reserve_date.asc&order=reserve_time.asc`
+    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&line_user_id=eq.${lineUserId}&status=in.(pending,confirmed)&select=id,reservation_name,line_name,reserve_date,reserve_time,party_size,seat_type,preferences,status,customer_note,shift_code,shift_label,is_special_day,created_at,updated_at&order=reserve_date.asc&order=reserve_time.asc`
+  );
+
+  const customers = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_customers?shop_id=eq.${SHOP_ID}&line_user_id=eq.${lineUserId}&select=line_user_id,line_name,last_reservation_name,status,memo,visit_count,no_show_count&limit=1`
   );
 
   return jsonResponse({
     ok: true,
     profile,
-    reservations: data || [],
+    customer: customers?.[0] || null,
+    reservations: reservations || [],
   }, env);
 }
 
@@ -506,7 +534,7 @@ async function cancelMyReservation(request, env) {
 
   const reservations = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?id=eq.${reservationId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,status,shift_code,shift_label,is_special_day`
+    `/rest/v1/iz_demo_reservations?id=eq.${reservationId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reservation_name,reserve_date,reserve_time,party_size,status,shift_code,shift_label,is_special_day`
   );
 
   const reservation = reservations?.[0];
@@ -573,7 +601,7 @@ async function changeMyReservation(request, env) {
 
   const reservations = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?id=eq.${oldReservationId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,status,shift_code,shift_label,is_special_day`
+    `/rest/v1/iz_demo_reservations?id=eq.${oldReservationId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reservation_name,reserve_date,reserve_time,party_size,status,shift_code,shift_label,is_special_day`
   );
 
   const oldReservation = reservations?.[0];
@@ -589,6 +617,11 @@ async function changeMyReservation(request, env) {
   if (!["pending", "confirmed"].includes(oldReservation.status)) {
     throw new Error("この予約はすでにキャンセル済み、または変更できない状態です");
   }
+
+  const reservationName =
+    normalizeReservationName(body.reservationName) ||
+    normalizeReservationName(oldReservation.reservation_name) ||
+    normalizeReservationName(profile.lineName);
 
   const result = await supabaseFetch(
     env,
@@ -606,6 +639,7 @@ async function changeMyReservation(request, env) {
         p_new_seat_type: body.seatType || "any",
         p_new_preferences: Array.isArray(body.preferences) ? body.preferences : [],
         p_change_reason: body.reason || "顧客による予約変更",
+        p_reservation_name: reservationName,
       }),
     }
   );
@@ -613,6 +647,7 @@ async function changeMyReservation(request, env) {
   return jsonResponse({
     ok: true,
     profile,
+    reservationName,
     oldReservation,
     result: Array.isArray(result) ? result[0] : result,
   }, env);
@@ -635,7 +670,7 @@ async function getAdminDay(request, env, url) {
 
   const reservations = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&reserve_date=eq.${encodedDate}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,seat_type,preferences,status,source,customer_note,admin_note,cancel_reason,shift_code,shift_label,is_special_day,created_at,updated_at,customer:iz_demo_customers(status,memo,visit_count,no_show_count)&order=reserve_time.asc&order=created_at.asc`
+    `/rest/v1/iz_demo_reservations?shop_id=eq.${SHOP_ID}&reserve_date=eq.${encodedDate}&select=id,line_user_id,line_name,reservation_name,reserve_date,reserve_time,party_size,seat_type,preferences,status,source,customer_note,admin_note,cancel_reason,shift_code,shift_label,is_special_day,created_at,updated_at,customer:iz_demo_customers(status,memo,visit_count,no_show_count,last_reservation_name)&order=reserve_time.asc&order=created_at.asc`
   );
 
   const activeReservations = (reservations || []).filter((reservation) => {
@@ -1302,7 +1337,7 @@ async function getReservationForNotification(env, reservationId) {
 
   const data = await supabaseFetch(
     env,
-    `/rest/v1/iz_demo_reservations?id=eq.${encodedId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reserve_date,reserve_time,party_size,seat_type,status,source,shift_code,shift_label,is_special_day`
+    `/rest/v1/iz_demo_reservations?id=eq.${encodedId}&shop_id=eq.${SHOP_ID}&select=id,line_user_id,line_name,reservation_name,reserve_date,reserve_time,party_size,seat_type,status,source,shift_code,shift_label,is_special_day`
   );
 
   return data?.[0] || null;
@@ -1333,12 +1368,17 @@ function buildLineMessage(notification, reservation) {
 
   if (reservation) {
     const shiftLabel = reservation.shift_label || "営業枠";
+    const displayName = getDisplayReservationName(reservation);
 
     lines.push("");
     lines.push("【予約情報】");
-    lines.push(`お名前：${reservation.line_name || "お客様"} 様`);
+    lines.push(`予約名：${displayName} 様`);
     lines.push(`日時：${reservation.reserve_date || ""} ${formatTime(reservation.reserve_time)}（${shiftLabel}）`);
     lines.push(`人数：${reservation.party_size || "-"}名`);
+
+    if (reservation.line_name && reservation.line_name !== displayName && isAdminNotification(notification)) {
+      lines.push(`LINE名：${reservation.line_name}`);
+    }
   }
 
   lines.push("");
