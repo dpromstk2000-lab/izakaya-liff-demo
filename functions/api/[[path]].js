@@ -110,6 +110,14 @@ export async function onRequest(context) {
       return await deleteSpecialDay(request, env);
     }
 
+    if (url.pathname === "/api/admin/special-day-shifts" && request.method === "GET") {
+      return await getAdminSpecialDayShifts(request, env, url);
+    }
+
+    if (url.pathname === "/api/admin/special-day-shifts/update" && request.method === "POST") {
+      return await updateSpecialDayShifts(request, env);
+    }
+
     return jsonResponse({
       ok: false,
       error: "Not found",
@@ -317,6 +325,47 @@ function normalizeShiftCode(value) {
   return text;
 }
 
+function defaultShiftLabel(shiftCode) {
+  if (shiftCode === "lunch") return "昼営業";
+  if (shiftCode === "dinner") return "夜営業";
+  if (shiftCode === "special") return "特別営業";
+  return shiftCode;
+}
+
+function defaultShiftSortOrder(shiftCode) {
+  if (shiftCode === "lunch") return 10;
+  if (shiftCode === "dinner") return 20;
+  return 100;
+}
+
+function defaultShiftOpenTime(shiftCode) {
+  if (shiftCode === "lunch") return "11:30";
+  if (shiftCode === "dinner") return "17:00";
+  return null;
+}
+
+function defaultShiftCloseTime(shiftCode) {
+  if (shiftCode === "lunch") return "14:30";
+  if (shiftCode === "dinner") return "23:00";
+  return null;
+}
+
+function defaultShiftLastOrderTime(shiftCode) {
+  if (shiftCode === "lunch") return "14:00";
+  if (shiftCode === "dinner") return "22:30";
+  return null;
+}
+
+function defaultShiftMaxGuests(shiftCode) {
+  if (shiftCode === "lunch") return 12;
+  return 20;
+}
+
+function defaultShiftMaxGroups(shiftCode) {
+  if (shiftCode === "lunch") return 5;
+  return 8;
+}
+
 // =========================================================
 // Public APIs
 // =========================================================
@@ -354,12 +403,18 @@ async function getPublicSettings(env) {
     `/rest/v1/iz_demo_special_days?shop_id=eq.${SHOP_ID}&select=target_date,is_closed,open_time,close_time,last_order_time,slot_interval_minutes,max_guests_per_slot,max_groups_per_slot,note&order=target_date.asc`
   );
 
+  const specialDayShifts = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_special_day_shifts?shop_id=eq.${SHOP_ID}&select=target_date,shift_code,shift_label,is_enabled,open_time,close_time,last_order_time,slot_interval_minutes,max_guests_per_slot,max_groups_per_slot,sort_order,note&order=target_date.asc&order=sort_order.asc`
+  );
+
   return jsonResponse({
     ok: true,
     shop: shop?.[0] || null,
     businessHours: businessHours || [],
     businessShifts: businessShifts || [],
     specialDays: specialDays || [],
+    specialDayShifts: specialDayShifts || [],
   }, env);
 }
 
@@ -860,29 +915,21 @@ async function updateBusinessShifts(request, env) {
 
     const shiftCode = normalizeShiftCode(item.shiftCode || item.shift_code);
     const isEnabled = normalizeBoolean(item.isEnabled ?? item.is_enabled);
-
-    const defaultLabel =
-      shiftCode === "lunch"
-        ? "昼営業"
-        : shiftCode === "dinner"
-          ? "夜営業"
-          : shiftCode;
-
     const sortOrder =
       normalizeNullableNumber(item.sortOrder ?? item.sort_order) ??
-      (shiftCode === "lunch" ? 10 : shiftCode === "dinner" ? 20 : 100);
+      defaultShiftSortOrder(shiftCode);
 
     return {
       dow,
       shiftCode,
-      shiftLabel: normalizeNullableString(item.shiftLabel || item.shift_label) || defaultLabel,
+      shiftLabel: normalizeNullableString(item.shiftLabel || item.shift_label) || defaultShiftLabel(shiftCode),
       isEnabled,
-      openTime: normalizeNullableString(item.openTime ?? item.open_time),
-      closeTime: normalizeNullableString(item.closeTime ?? item.close_time),
-      lastOrderTime: normalizeNullableString(item.lastOrderTime ?? item.last_order_time),
+      openTime: normalizeNullableString(item.openTime ?? item.open_time) || defaultShiftOpenTime(shiftCode),
+      closeTime: normalizeNullableString(item.closeTime ?? item.close_time) || defaultShiftCloseTime(shiftCode),
+      lastOrderTime: normalizeNullableString(item.lastOrderTime ?? item.last_order_time) || defaultShiftLastOrderTime(shiftCode),
       slotIntervalMinutes: normalizeNullableNumber(item.slotIntervalMinutes ?? item.slot_interval_minutes) ?? 30,
-      maxGuestsPerSlot: normalizeNullableNumber(item.maxGuestsPerSlot ?? item.max_guests_per_slot) ?? 20,
-      maxGroupsPerSlot: normalizeNullableNumber(item.maxGroupsPerSlot ?? item.max_groups_per_slot) ?? 8,
+      maxGuestsPerSlot: normalizeNullableNumber(item.maxGuestsPerSlot ?? item.max_guests_per_slot) ?? defaultShiftMaxGuests(shiftCode),
+      maxGroupsPerSlot: normalizeNullableNumber(item.maxGroupsPerSlot ?? item.max_groups_per_slot) ?? defaultShiftMaxGroups(shiftCode),
       sortOrder,
       note: normalizeNullableString(item.note),
     };
@@ -909,6 +956,7 @@ async function updateBusinessShifts(request, env) {
 
 // =========================================================
 // Special Day Admin APIs
+// 旧形式。互換用として残す。
 // =========================================================
 
 async function getAdminSpecialDays(request, env, url) {
@@ -990,6 +1038,112 @@ async function deleteSpecialDay(request, env) {
       body: JSON.stringify({
         p_shop_id: SHOP_ID,
         p_target_date: String(body.targetDate).trim(),
+        p_actor_id: body.actorId || "admin_dashboard",
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    result: Array.isArray(result) ? result[0] : result,
+  }, env);
+}
+
+// =========================================================
+// Special Day Shifts Admin APIs
+// 新形式。特別営業日を昼だけ / 夜だけ / 両方営業に対応。
+// =========================================================
+
+async function getAdminSpecialDayShifts(request, env, url) {
+  requireAdmin(request, env);
+
+  const today = getJstDateString();
+  const defaultTo = addMonthsToDateString(today, 3);
+
+  const from = url.searchParams.get("from") || today;
+  const to = url.searchParams.get("to") || defaultTo;
+
+  const specialDays = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_special_days?shop_id=eq.${SHOP_ID}&target_date=gte.${encodeURIComponent(from)}&target_date=lte.${encodeURIComponent(to)}&select=id,target_date,is_closed,open_time,close_time,last_order_time,slot_interval_minutes,max_guests_per_slot,max_groups_per_slot,note,created_at,updated_at&order=target_date.asc`
+  );
+
+  const specialDayShifts = await supabaseFetch(
+    env,
+    `/rest/v1/iz_demo_special_day_shifts?shop_id=eq.${SHOP_ID}&target_date=gte.${encodeURIComponent(from)}&target_date=lte.${encodeURIComponent(to)}&select=id,target_date,shift_code,shift_label,is_enabled,open_time,close_time,last_order_time,slot_interval_minutes,max_guests_per_slot,max_groups_per_slot,sort_order,note,created_at,updated_at&order=target_date.asc&order=sort_order.asc`
+  );
+
+  return jsonResponse({
+    ok: true,
+    from,
+    to,
+    specialDays: specialDays || [],
+    specialDayShifts: specialDayShifts || [],
+  }, env);
+}
+
+async function updateSpecialDayShifts(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+
+  if (!body.targetDate) {
+    throw new Error("対象日が必要です");
+  }
+
+  if (typeof body.isClosed !== "boolean") {
+    throw new Error("isClosed は true / false で指定してください");
+  }
+
+  const targetDate = String(body.targetDate).trim();
+  const isClosed = body.isClosed;
+  const note = normalizeNullableString(body.note);
+
+  let normalizedShifts = [];
+
+  if (!isClosed) {
+    if (!Array.isArray(body.shifts)) {
+      throw new Error("特別営業日は shifts 配列が必要です");
+    }
+
+    if (!body.shifts.length) {
+      throw new Error("特別営業日は昼営業または夜営業の設定が必要です");
+    }
+
+    normalizedShifts = body.shifts.map((item) => {
+      const shiftCode = normalizeShiftCode(item.shiftCode || item.shift_code);
+      const isEnabled = normalizeBoolean(item.isEnabled ?? item.is_enabled);
+      const sortOrder =
+        normalizeNullableNumber(item.sortOrder ?? item.sort_order) ??
+        defaultShiftSortOrder(shiftCode);
+
+      return {
+        shiftCode,
+        shiftLabel: normalizeNullableString(item.shiftLabel || item.shift_label) || defaultShiftLabel(shiftCode),
+        isEnabled,
+        openTime: normalizeNullableString(item.openTime ?? item.open_time) || defaultShiftOpenTime(shiftCode),
+        closeTime: normalizeNullableString(item.closeTime ?? item.close_time) || defaultShiftCloseTime(shiftCode),
+        lastOrderTime: normalizeNullableString(item.lastOrderTime ?? item.last_order_time) || defaultShiftLastOrderTime(shiftCode),
+        slotIntervalMinutes: normalizeNullableNumber(item.slotIntervalMinutes ?? item.slot_interval_minutes) ?? 30,
+        maxGuestsPerSlot: normalizeNullableNumber(item.maxGuestsPerSlot ?? item.max_guests_per_slot) ?? defaultShiftMaxGuests(shiftCode),
+        maxGroupsPerSlot: normalizeNullableNumber(item.maxGroupsPerSlot ?? item.max_groups_per_slot) ?? defaultShiftMaxGroups(shiftCode),
+        sortOrder,
+        note: normalizeNullableString(item.note),
+      };
+    });
+  }
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/iz_demo_update_special_day_shifts",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: SHOP_ID,
+        p_target_date: targetDate,
+        p_is_closed: isClosed,
+        p_shifts: normalizedShifts,
+        p_note: note,
         p_actor_id: body.actorId || "admin_dashboard",
       }),
     }
