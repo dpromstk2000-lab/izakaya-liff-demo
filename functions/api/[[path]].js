@@ -86,6 +86,10 @@ export async function onRequest(context) {
       return await enqueueReminders(request, env);
     }
 
+    if (url.pathname === "/api/admin/demo-reset" && request.method === "POST") {
+      return await resetIzakayaDemo(request, env);
+    }
+
     if (url.pathname === "/api/admin/business-hours" && request.method === "GET") {
       return await getAdminBusinessHours(request, env);
     }
@@ -852,6 +856,30 @@ async function enqueueReminders(request, env) {
 
   return jsonResponse({
     ok: true,
+    result: Array.isArray(result) ? result[0] : result,
+  }, env);
+}
+
+async function resetIzakayaDemo(request, env) {
+  requireAdmin(request, env);
+
+  const body = await readJson(request);
+  const shopId = body.shopId || SHOP_ID;
+
+  const result = await supabaseFetch(
+    env,
+    "/rest/v1/rpc/reset_izakaya_demo_data",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        p_shop_id: shopId,
+      }),
+    }
+  );
+
+  return jsonResponse({
+    ok: true,
+    message: "居酒屋DPROの営業前DEMOデータを準備しました。",
     result: Array.isArray(result) ? result[0] : result,
   }, env);
 }
