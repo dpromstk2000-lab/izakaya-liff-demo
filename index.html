@@ -79,19 +79,50 @@
     .modal-bg {
       background: rgba(15, 23, 42, 0.55);
     }
+
+    .hero-panel {
+      background:
+        radial-gradient(circle at top left, rgba(251, 191, 36, 0.20), transparent 34%),
+        linear-gradient(135deg, #fff7ed, #ffffff);
+      border: 1px solid #fed7aa;
+      border-radius: 1.5rem;
+      box-shadow: 0 16px 38px rgba(120, 53, 15, 0.08);
+    }
+
+    .step-card {
+      background: white;
+      border: 1px solid #fed7aa;
+      border-radius: 1rem;
+      padding: 0.9rem;
+    }
+
+    .summary-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 1rem;
+      padding: 1rem;
+    }
+
+    .soft-note {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 1rem;
+      padding: .85rem;
+    }
+
   </style>
 </head>
 
-<body class="bg-slate-100 text-slate-800 min-h-screen pb-24">
+<body class="bg-stone-100 text-slate-800 min-h-screen pb-24">
 
   <div id="toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white text-sm font-bold px-4 py-3 rounded-xl shadow-lg"></div>
 
-  <header class="bg-slate-900 text-white">
+  <header class="bg-stone-950 text-white">
     <div class="max-w-3xl mx-auto px-4 py-6">
       <div class="flex items-center justify-between gap-3">
         <div>
           <h1 class="text-2xl font-black">🏮 居酒屋DPRO</h1>
-          <p class="text-xs text-slate-400 mt-1">LINE予約デモ</p>
+          <p class="text-xs text-orange-200/80 mt-1">LINE予約デモ｜仮予約・変更・キャンセル対応</p>
         </div>
 
         <div id="profile-box" class="text-right text-xs text-slate-300">
@@ -111,11 +142,44 @@
       <p class="text-center text-slate-600 font-bold">LINEログインを確認しています...</p>
     </section>
 
+    <section class="hero-panel p-5">
+      <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div>
+          <p class="text-[10px] tracking-[0.32em] text-orange-700 font-black">RESERVATION FLOW</p>
+          <h2 class="text-2xl font-black mt-2">予約リクエスト</h2>
+          <p class="text-sm text-slate-600 mt-2 leading-relaxed">
+            予約内容を送信後、お店が確認してから確定します。確定・変更・キャンセルの状況は下の「自分の予約」で確認できます。
+          </p>
+        </div>
+        <button onclick="fetchMyReservations()" class="btn bg-white border border-orange-200 text-orange-800 text-sm shrink-0">
+          最新状況を確認
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
+        <div class="step-card">
+          <p class="text-xs font-black text-orange-700">STEP 1</p>
+          <p class="font-black mt-1">日時・人数を選択</p>
+          <p class="text-xs text-slate-500 mt-1">営業日・特別営業日を反映</p>
+        </div>
+        <div class="step-card">
+          <p class="text-xs font-black text-orange-700">STEP 2</p>
+          <p class="font-black mt-1">内容を確認して送信</p>
+          <p class="text-xs text-slate-500 mt-1">予約名・席希望・要望を保存</p>
+        </div>
+        <div class="step-card">
+          <p class="text-xs font-black text-orange-700">STEP 3</p>
+          <p class="font-black mt-1">お店が確認</p>
+          <p class="text-xs text-slate-500 mt-1">確定後にLINEで案内</p>
+        </div>
+      </div>
+    </section>
+
     <section class="panel p-5">
       <div class="flex items-start justify-between gap-3">
         <div>
           <h2 class="text-xl font-black">新しい予約</h2>
-          <p class="text-xs text-slate-400 mt-1">日時と人数を選んで予約リクエストを送信します。</p>
+          <p class="text-xs text-slate-400 mt-1">お店で確認しやすいように、予約名・人数・席希望・要望を送信します。</p>
         </div>
 
         <button onclick="reloadAll()" class="text-xs font-black text-blue-600 bg-blue-50 border border-blue-200 px-3 py-2 rounded-xl">
@@ -206,8 +270,25 @@
         <textarea id="customer-note" class="input" rows="3" placeholder="例：奥の席希望、少し遅れる可能性があります、など"></textarea>
       </div>
 
+
+      <div class="summary-box mt-5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs font-black text-orange-700">送信前の確認</p>
+            <h3 class="font-black mt-1">予約内容</h3>
+          </div>
+          <span class="text-[11px] font-black bg-white border border-orange-200 text-orange-700 px-2 py-1 rounded-full">仮予約として送信</span>
+        </div>
+        <div id="reservation-live-summary" class="text-sm text-slate-700 mt-3 leading-relaxed">
+          日時・人数を選択してください。
+        </div>
+        <p class="text-[11px] text-slate-500 mt-3">
+          送信後は「自分の予約」に表示されます。確定前はオーナー確認中として表示されます。
+        </p>
+      </div>
+
       <button id="btn-create-reservation" onclick="submitReservation()" class="btn w-full bg-amber-600 text-white mt-5">
-        予約リクエストを送信
+        予約内容を確認する
       </button>
 
       <p id="create-result" class="text-sm text-slate-500 mt-3 text-center"></p>
@@ -233,6 +314,42 @@
     </section>
 
   </main>
+
+
+  <div id="reservation-confirm-modal" class="hidden fixed inset-0 z-[160] modal-bg p-4 overflow-y-auto">
+    <div class="max-w-xl mx-auto bg-white rounded-3xl shadow-2xl p-5 mt-8 mb-8">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-black">予約内容の確認</h2>
+          <p class="text-xs text-slate-400 mt-1">この内容でお店に予約リクエストを送信します。</p>
+        </div>
+
+        <button onclick="closeReservationConfirmModal()" class="w-10 h-10 rounded-full bg-slate-100 font-black text-xl">
+          ×
+        </button>
+      </div>
+
+      <div id="reservation-confirm-body" class="summary-box mt-5 text-sm text-slate-700 leading-relaxed"></div>
+
+      <div class="soft-note mt-4">
+        <p class="text-sm font-black text-slate-800">送信後の表示</p>
+        <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+          送信直後は「オーナー確認中」として表示されます。お店側で予約確定後、予約状況が「確定」に変わります。
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-5">
+        <button onclick="closeReservationConfirmModal()" class="btn bg-slate-100 text-slate-700">
+          修正する
+        </button>
+        <button onclick="submitReservationConfirmed()" class="btn bg-amber-600 text-white">
+          この内容で送信
+        </button>
+      </div>
+
+      <p id="reservation-confirm-result" class="text-sm text-slate-500 mt-3 text-center"></p>
+    </div>
+  </div>
 
   <div id="change-modal" class="hidden fixed inset-0 z-[150] modal-bg p-4 overflow-y-auto">
     <div class="max-w-xl mx-auto bg-white rounded-3xl shadow-2xl p-5 mt-8 mb-8">
@@ -324,7 +441,7 @@
     const LIFF_ID = "2010334558-3WGZGeu2";
 
     const STATUS_LABELS = {
-      pending: "仮予約",
+      pending: "オーナー確認中",
       confirmed: "確定",
       cancelled_customer: "キャンセル",
       cancelled_shop: "店舗キャンセル",
@@ -354,9 +471,12 @@
     let selectedTime = "";
     let selectedChangeTime = "";
     let myReservations = [];
+    let pendingReservationPayload = null;
 
     window.addEventListener("DOMContentLoaded", async () => {
       setupInitialDates();
+      setupReservationSummaryEvents();
+      renderLiveReservationSummary();
       await initializeApp();
     });
 
@@ -373,6 +493,52 @@
       changeDate.value = today;
       changeDate.min = today;
       changeDate.max = maxDate;
+    }
+
+
+    function setupReservationSummaryEvents() {
+      const ids = [
+        "reservation-name",
+        "reserve-date",
+        "party-size",
+        "seat-type",
+        "customer-note"
+      ];
+
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("input", renderLiveReservationSummary);
+        el.addEventListener("change", renderLiveReservationSummary);
+      });
+
+      document.querySelectorAll(".preference-checkbox").forEach((checkbox) => {
+        checkbox.addEventListener("change", renderLiveReservationSummary);
+      });
+    }
+
+    function renderLiveReservationSummary() {
+      const box = document.getElementById("reservation-live-summary");
+      if (!box) return;
+
+      const payload = buildReservationPayload(false);
+      const name = payload.reservationName || "未入力";
+      const date = payload.reserveDate || "未選択";
+      const time = payload.reserveTime || "未選択";
+      const seatLabel = SEAT_LABELS[payload.seatType] || "指定なし";
+      const preferences = payload.preferences.length ? payload.preferences.join(" / ") : "なし";
+      const note = payload.customerNote || "なし";
+
+      box.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div><span class="font-black">予約名：</span>${escapeHtml(name)} 様</div>
+          <div><span class="font-black">日時：</span>${escapeHtml(date)} ${escapeHtml(time)}</div>
+          <div><span class="font-black">人数：</span>${Number(payload.partySize || 0)}名</div>
+          <div><span class="font-black">席希望：</span>${escapeHtml(seatLabel)}</div>
+          <div class="sm:col-span-2"><span class="font-black">ご要望：</span>${escapeHtml(preferences)}</div>
+          <div class="sm:col-span-2"><span class="font-black">メモ：</span>${escapeHtml(note)}</div>
+        </div>
+      `;
     }
 
     async function initializeApp() {
@@ -623,6 +789,7 @@
     function onReserveDateChange() {
       selectedTime = "";
       renderReservationSlots();
+      renderLiveReservationSummary();
     }
 
     function onChangeDateChange() {
@@ -713,6 +880,7 @@
     function selectReserveTime(time) {
       selectedTime = time;
       renderReservationSlots();
+      renderLiveReservationSummary();
     }
 
     function selectChangeTime(time) {
@@ -892,57 +1060,111 @@
       return result;
     }
 
-    async function submitReservation() {
-      try {
-        const idToken = getIdTokenOrRefresh();
 
-        if (!idToken) return;
+    function buildReservationPayload(strict = true) {
+      const reservationName = document.getElementById("reservation-name").value.trim();
+      const reserveDate = document.getElementById("reserve-date").value;
+      const partySize = Number(document.getElementById("party-size").value);
+      const seatType = document.getElementById("seat-type").value;
+      const customerNote = document.getElementById("customer-note").value.trim();
 
-        const reservationName = document.getElementById("reservation-name").value.trim();
-        const reserveDate = document.getElementById("reserve-date").value;
-        const partySize = Number(document.getElementById("party-size").value);
-        const seatType = document.getElementById("seat-type").value;
-        const customerNote = document.getElementById("customer-note").value.trim();
+      const preferences = Array.from(document.querySelectorAll(".preference-checkbox:checked"))
+        .map((checkbox) => checkbox.value);
 
+      if (strict) {
         if (!reservationName) {
           alert("予約名を入力してください。会社名・苗字だけでも構いません。");
           document.getElementById("reservation-name").focus();
-          return;
+          return null;
         }
 
         if (reservationName.length > 80) {
           alert("予約名は80文字以内で入力してください。");
           document.getElementById("reservation-name").focus();
-          return;
+          return null;
         }
 
         if (!reserveDate) {
           alert("予約日を選択してください。");
-          return;
+          return null;
         }
 
         if (!selectedTime) {
           alert("予約時間を選択してください。");
-          return;
+          return null;
         }
+      }
 
-        const preferences = Array.from(document.querySelectorAll(".preference-checkbox:checked"))
-          .map((checkbox) => checkbox.value);
+      return {
+        reservationName,
+        reserveDate,
+        reserveTime: selectedTime,
+        partySize,
+        seatType,
+        preferences,
+        customerNote
+      };
+    }
+
+    async function submitReservation() {
+      const payload = buildReservationPayload(true);
+
+      if (!payload) return;
+
+      pendingReservationPayload = payload;
+      openReservationConfirmModal(payload);
+    }
+
+    function openReservationConfirmModal(payload) {
+      const seatLabel = SEAT_LABELS[payload.seatType] || "指定なし";
+      const preferences = payload.preferences.length ? payload.preferences.join(" / ") : "なし";
+      const note = payload.customerNote || "なし";
+
+      document.getElementById("reservation-confirm-result").innerText = "";
+
+      document.getElementById("reservation-confirm-body").innerHTML = `
+        <div class="space-y-2">
+          <p><span class="font-black">予約名：</span>${escapeHtml(payload.reservationName)} 様</p>
+          <p><span class="font-black">日時：</span>${escapeHtml(payload.reserveDate)} ${escapeHtml(payload.reserveTime)}</p>
+          <p><span class="font-black">人数：</span>${Number(payload.partySize || 0)}名</p>
+          <p><span class="font-black">席希望：</span>${escapeHtml(seatLabel)}</p>
+          <p><span class="font-black">ご要望：</span>${escapeHtml(preferences)}</p>
+          <p><span class="font-black">メモ：</span>${escapeHtml(note)}</p>
+        </div>
+      `;
+
+      document.getElementById("reservation-confirm-modal").classList.remove("hidden");
+    }
+
+    function closeReservationConfirmModal() {
+      document.getElementById("reservation-confirm-modal").classList.add("hidden");
+    }
+
+    async function submitReservationConfirmed() {
+      try {
+        const idToken = getIdTokenOrRefresh();
+
+        if (!idToken) return;
+
+        const payload = pendingReservationPayload || buildReservationPayload(true);
+
+        if (!payload) return;
 
         setCreateLoading(true);
+        document.getElementById("reservation-confirm-result").innerText = "予約リクエストを送信しています...";
         document.getElementById("create-result").innerText = "予約リクエストを送信しています...";
 
         const data = await apiFetch("/api/reservations/create", {
           method: "POST",
           body: JSON.stringify({
             idToken,
-            reservationName,
-            reserveDate,
-            reserveTime: selectedTime,
-            partySize,
-            seatType,
-            preferences,
-            customerNote
+            reservationName: payload.reservationName,
+            reserveDate: payload.reserveDate,
+            reserveTime: payload.reserveTime,
+            partySize: payload.partySize,
+            seatType: payload.seatType,
+            preferences: payload.preferences,
+            customerNote: payload.customerNote
           })
         });
 
@@ -951,9 +1173,19 @@
         document.getElementById("create-result").innerText =
           result.message || "予約リクエストを受け付けました。";
 
+        document.getElementById("reservation-confirm-result").innerText =
+          "予約リクエストを送信しました。";
+
         showToast("予約リクエストを送信しました。");
 
+        closeReservationConfirmModal();
+
         await fetchMyReservations();
+
+        document.getElementById("my-reservation-list").scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
 
       } catch (err) {
         console.error("予約作成エラー:", err);
@@ -962,6 +1194,9 @@
           refreshLineLogin("ログイン情報の期限が切れました。更新しています。");
           return;
         }
+
+        document.getElementById("reservation-confirm-result").innerText =
+          `予約できませんでした。${err.message}`;
 
         document.getElementById("create-result").innerText = `予約できませんでした。${err.message}`;
 
@@ -979,7 +1214,7 @@
         button.className = "btn w-full bg-slate-400 text-white mt-5";
       } else {
         button.disabled = false;
-        button.innerText = "予約リクエストを送信";
+        button.innerText = "予約内容を確認する";
         button.className = "btn w-full bg-amber-600 text-white mt-5";
       }
     }
@@ -1002,6 +1237,7 @@
         myReservations = data.reservations || [];
 
         applyLastReservationName();
+        renderLiveReservationSummary();
         renderMyReservations();
 
       } catch (err) {
@@ -1030,13 +1266,33 @@
       return res.reservation_name || res.line_name || "お客様";
     }
 
+
+    function getCustomerReservationMessage(res) {
+      if (res.status === "pending") {
+        return "お店が予約内容を確認しています。確定後にLINEで案内があります。";
+      }
+
+      if (res.status === "confirmed") {
+        return "予約は確定しています。日時・人数・席希望をご確認ください。";
+      }
+
+      return "この予約は現在変更できない状態です。";
+    }
+
+    function getReservationStatusClass(status) {
+      if (status === "confirmed") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      if (status === "pending") return "bg-amber-100 text-amber-700 border-amber-200";
+      return "bg-slate-100 text-slate-600 border-slate-200";
+    }
+
     function renderMyReservations() {
       const list = document.getElementById("my-reservation-list");
 
       if (!myReservations.length) {
         list.innerHTML = `
-          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center text-slate-400">
-            現在、有効な予約はありません。
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center text-slate-500">
+            <p class="font-black">現在、有効な予約はありません。</p>
+            <p class="text-xs mt-2">下のフォームから新しい予約リクエストを送信できます。</p>
           </div>
         `;
         return;
@@ -1047,21 +1303,17 @@
         const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
         const shiftLabel = res.shift_label || SHIFT_FALLBACK_LABELS[res.shift_code] || "営業枠";
         const displayName = getReservationDisplayName(res);
+        const statusClass = getReservationStatusClass(res.status);
+        const preferences = Array.isArray(res.preferences) && res.preferences.length
+          ? res.preferences.join(" / ")
+          : "";
 
         return `
-          <article class="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-3">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <p class="text-sm font-black text-slate-800 mb-1">
-                  予約名：${escapeHtml(displayName)} 様
-                </p>
-
+          <article class="bg-white border border-slate-200 rounded-2xl p-4 mb-3 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
-                  <p class="text-lg font-black">
-                    ${escapeHtml(res.reserve_date)} ${formatTime(res.reserve_time)}
-                  </p>
-
-                  <span class="text-[11px] font-black px-2 py-1 rounded-full ${res.status === "confirmed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}">
+                  <span class="text-[11px] font-black px-2 py-1 rounded-full border ${statusClass}">
                     ${escapeHtml(statusLabel)}
                   </span>
 
@@ -1070,20 +1322,40 @@
                   </span>
                 </div>
 
-                <p class="text-sm text-slate-500 mt-2">
+                <p class="text-sm font-black text-slate-800 mt-3">
+                  予約名：${escapeHtml(displayName)} 様
+                </p>
+
+                <p class="text-xl font-black text-slate-900 mt-1">
+                  ${escapeHtml(res.reserve_date)} ${formatTime(res.reserve_time)}
+                </p>
+
+                <p class="text-sm text-slate-600 mt-2">
                   ${Number(res.party_size || 0)}名 / ${escapeHtml(seatLabel)}
                 </p>
 
-                ${res.line_name && res.line_name !== displayName ? `
-                  <p class="text-[11px] text-slate-400 mt-1">
-                    LINE名：${escapeHtml(res.line_name)}
+                ${preferences ? `
+                  <p class="text-xs text-slate-500 mt-2">
+                    ご要望：${escapeHtml(preferences)}
                   </p>
                 ` : ""}
 
                 ${res.customer_note ? `
-                  <p class="text-xs text-slate-500 mt-2">${escapeHtml(res.customer_note)}</p>
+                  <div class="bg-orange-50 border border-orange-100 rounded-2xl p-3 text-xs text-orange-900 mt-3">
+                    ${escapeHtml(res.customer_note)}
+                  </div>
+                ` : ""}
+
+                ${res.line_name && res.line_name !== displayName ? `
+                  <p class="text-[11px] text-slate-400 mt-2">
+                    LINE名：${escapeHtml(res.line_name)}
+                  </p>
                 ` : ""}
               </div>
+            </div>
+
+            <div class="soft-note mt-4">
+              <p class="text-sm font-black">${escapeHtml(getCustomerReservationMessage(res))}</p>
             </div>
 
             <div class="grid grid-cols-2 gap-2 mt-4">
