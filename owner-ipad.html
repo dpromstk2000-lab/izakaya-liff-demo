@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <title>居酒屋DPRO iPad営業ボード</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(251, 146, 60, 0.18), transparent 34%),
+        linear-gradient(135deg, #fafaf9, #f5f5f4);
+    }
+
+    ::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid #e7e5e4;
+      border-radius: 1.35rem;
+      box-shadow: 0 10px 24px rgba(68, 64, 60, 0.06);
+    }
+
+    .top-panel {
+      background:
+        radial-gradient(circle at top left, rgba(251, 191, 36, 0.20), transparent 36%),
+        linear-gradient(135deg, #1c1917, #431407);
+      border-radius: 1.5rem;
+      box-shadow: 0 20px 50px rgba(68, 64, 60, 0.22);
+      color: white;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 1.1rem;
+      padding: 1rem;
+      backdrop-filter: blur(10px);
+    }
+
+    .input {
+      width: 100%;
+      border: 1px solid #d6d3d1;
+      border-radius: 1rem;
+      padding: 0.9rem;
+      background: white;
+      outline: none;
+      font-size: 16px;
+    }
+
+    .input:focus {
+      border-color: #ea580c;
+      box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.18);
+    }
+
+    .btn {
+      font-weight: 900;
+      border-radius: 1rem;
+      padding: 0.9rem 1rem;
+      transition: 0.15s;
+      min-height: 48px;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .status-btn {
+      font-weight: 900;
+      border-radius: 1rem;
+      padding: 1rem 0.75rem;
+      min-height: 58px;
+      border: 1px solid #e7e5e4;
+      background: white;
+      color: #44403c;
+    }
+
+    .status-btn.active-open {
+      background: #059669;
+      border-color: #059669;
+      color: white;
+    }
+
+    .status-btn.active-few {
+      background: #d97706;
+      border-color: #d97706;
+      color: white;
+    }
+
+    .status-btn.active-full {
+      background: #dc2626;
+      border-color: #dc2626;
+      color: white;
+    }
+
+    .status-btn.active-closed {
+      background: #292524;
+      border-color: #292524;
+      color: white;
+    }
+
+    .tab-btn {
+      font-weight: 900;
+      border-radius: 999px;
+      padding: 0.85rem 1rem;
+      background: white;
+      color: #57534e;
+      border: 1px solid #e7e5e4;
+      white-space: nowrap;
+    }
+
+    .tab-btn.active {
+      background: #ea580c;
+      color: white;
+      border-color: #ea580c;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 12px;
+      font-weight: 900;
+      padding: 0.3rem 0.65rem;
+      border-radius: 999px;
+    }
+
+    .mini-label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-size: 12px;
+      font-weight: 900;
+      color: #78716c;
+    }
+
+    .modal-bg {
+      background: rgba(28, 25, 23, 0.58);
+    }
+
+    .safe-bottom {
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+  </style>
+</head>
+
+<body class="text-stone-800 min-h-screen safe-bottom">
+
+  <div id="toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[300] bg-stone-950 text-white text-sm font-black px-5 py-3 rounded-2xl shadow-2xl"></div>
+
+  <!-- Login -->
+  <section id="login-section" class="max-w-xl mx-auto px-5 py-16">
+    <div class="panel p-6">
+      <p class="text-xs font-black tracking-[0.28em] text-orange-700">IZAKAYA DPRO</p>
+      <h1 class="text-3xl font-black mt-2">🏮 iPad営業ボード</h1>
+      <p class="text-sm text-stone-500 mt-3 leading-relaxed">
+        営業中に見るための現場用画面です。店舗ステータス、仮予約、来店準備をここで確認します。
+      </p>
+
+      <div class="mt-6">
+        <label class="mini-label">ADMIN TOKEN</label>
+        <input id="admin-token-input" type="password" class="input" placeholder="管理者トークン" autocomplete="current-password" />
+      </div>
+
+      <button onclick="loginAdmin()" class="btn w-full bg-stone-950 text-white mt-5">
+        ログイン
+      </button>
+
+      <p id="login-error" class="text-sm text-red-600 font-bold mt-3"></p>
+    </div>
+  </section>
+
+  <!-- App -->
+  <section id="app-section" class="hidden">
+    <main class="max-w-6xl mx-auto px-4 md:px-6 py-5 space-y-5">
+
+      <!-- Top -->
+      <section class="top-panel p-5 md:p-6">
+        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+          <div>
+            <p class="text-[10px] font-black tracking-[0.34em] text-orange-200">TODAY'S SERVICE BOARD</p>
+            <h1 class="text-3xl md:text-4xl font-black mt-2">居酒屋DPRO 本日の営業</h1>
+            <p id="top-summary" class="text-sm text-orange-100 mt-3 leading-relaxed">
+              本日の営業状況を読み込み中...
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <button onclick="runDemoReset()" id="btn-demo-reset" class="btn bg-amber-500 text-stone-950">
+              営業前DEMO準備
+            </button>
+            <button onclick="reloadAll()" class="btn bg-white/15 border border-white/15 text-white">
+              最新情報に更新
+            </button>
+            <a id="pc-admin-link" href="./admin.html" class="btn bg-white text-stone-950 inline-flex items-center justify-center">
+              PC管理画面へ
+            </a>
+          </div>
+        </div>
+
+        <div id="top-stats" class="grid grid-cols-2 lg:grid-cols-5 gap-3 mt-5"></div>
+        <p id="demo-reset-result" class="text-xs font-bold text-orange-100 mt-3"></p>
+      </section>
+
+      <!-- Store status -->
+      <section class="panel p-4 md:p-5">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-black">店舗ステータス</h2>
+            <p id="shop-status-current" class="text-sm text-stone-500 mt-1">現在の表示を取得中...</p>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 lg:min-w-[620px]">
+            <button id="status-open" onclick="quickShopStatus('open', '空席あり')" class="status-btn">空席あり</button>
+            <button id="status-few" onclick="quickShopStatus('few', '残りわずか')" class="status-btn">残りわずか</button>
+            <button id="status-full" onclick="quickShopStatus('full', '満席')" class="status-btn">満席</button>
+            <button id="status-closed" onclick="quickShopStatus('closed', '本日終了')" class="status-btn">本日終了</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 mt-4">
+          <input id="shop-status-message" class="input" placeholder="例：空席あり / 本日、早い時間は残りわずかです" />
+          <button onclick="saveShopStatus()" class="btn bg-stone-950 text-white">
+            表示文を保存
+          </button>
+        </div>
+      </section>
+
+      <!-- Tabs -->
+      <section class="panel p-3">
+        <div class="overflow-x-auto">
+          <div class="flex gap-2 min-w-max">
+            <button id="tab-today" onclick="setTab('today')" class="tab-btn active">今日</button>
+            <button id="tab-pending" onclick="setTab('pending')" class="tab-btn">仮予約</button>
+            <button id="tab-ready" onclick="setTab('ready')" class="tab-btn">来店準備</button>
+            <button id="tab-notifications" onclick="setTab('notifications')" class="tab-btn">通知</button>
+            <button id="tab-history" onclick="setTab('history')" class="tab-btn">履歴</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="content-area" class="space-y-3">
+        <div class="panel p-8 text-center text-stone-400 font-black">読み込み中...</div>
+      </section>
+
+    </main>
+  </section>
+
+  <!-- Message modal -->
+  <section id="message-modal" class="hidden fixed inset-0 z-[220] modal-bg p-4 overflow-y-auto">
+    <div class="max-w-2xl mx-auto bg-white rounded-[1.6rem] shadow-2xl p-5 mt-8 mb-8">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h2 class="text-2xl font-black">LINE文面確認</h2>
+          <p class="text-sm text-stone-500 mt-1">必要に応じて編集してからコピーできます。</p>
+        </div>
+        <button onclick="closeMessageModal()" class="w-12 h-12 rounded-full bg-stone-100 text-stone-700 text-2xl font-black">×</button>
+      </div>
+
+      <textarea id="message-textarea" class="input mt-5 min-h-[260px]" rows="10"></textarea>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
+        <button onclick="copyMessageFromModal()" class="btn bg-orange-600 text-white">文面コピー</button>
+        <button onclick="closeMessageModal()" class="btn bg-stone-100 text-stone-700">閉じる</button>
+        <a href="./admin.html" class="btn bg-stone-950 text-white inline-flex items-center justify-center">PC管理画面</a>
+      </div>
+
+      <p id="message-modal-result" class="text-xs text-stone-500 font-bold mt-3"></p>
+    </div>
+  </section>
+
+  <script>
+    const ADMIN_TOKEN_KEY = "iz_demo_admin_token";
+    const SHOP_ID = "11111111-1111-1111-1111-111111111111";
+
+    const STATUS_LABELS = {
+      pending: "仮予約",
+      confirmed: "確定",
+      cancelled_customer: "顧客キャンセル",
+      cancelled_shop: "店舗キャンセル",
+      completed: "来店済み",
+      no_show: "無断キャンセル",
+    };
+
+    const SHOP_STATUS_LABELS = {
+      open: "空席あり",
+      few: "残りわずか",
+      full: "満席",
+      closed: "本日終了",
+    };
+
+    const SEAT_LABELS = {
+      any: "指定なし",
+      counter: "カウンター",
+      table: "テーブル",
+      private_room: "個室",
+    };
+
+    const NOTIFY_TYPE_LABELS = {
+      reservation_requested_customer: "予約受付・お客様",
+      reservation_requested_admin: "予約受付・管理者",
+      reservation_confirmed_customer: "予約確定",
+      reservation_cancelled_shop_customer: "店舗キャンセル",
+      reservation_cancelled_customer: "顧客キャンセル",
+      reservation_cancelled_customer_admin: "顧客キャンセル・管理者",
+      reservation_changed_customer: "予約変更・お客様",
+      reservation_changed_admin: "予約変更・管理者",
+      reservation_reminder_customer: "前日リマインド",
+    };
+
+    let adminToken = "";
+    let reservations = [];
+    let notificationSummary = {};
+    let currentShopStatus = null;
+    let activeTab = "today";
+    let messageTargetReservationId = null;
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const savedToken = localStorage.getItem(ADMIN_TOKEN_KEY);
+
+      if (savedToken) {
+        adminToken = savedToken;
+        showApp();
+      }
+    });
+
+    function loginAdmin() {
+      const token = document.getElementById("admin-token-input").value.trim();
+
+      if (!token) {
+        document.getElementById("login-error").innerText = "管理者トークンを入力してください。";
+        return;
+      }
+
+      adminToken = token;
+      localStorage.setItem(ADMIN_TOKEN_KEY, token);
+      showApp();
+    }
+
+    function showApp() {
+      document.getElementById("login-section").classList.add("hidden");
+      document.getElementById("app-section").classList.remove("hidden");
+      reloadAll();
+    }
+
+    async function reloadAll() {
+      await Promise.allSettled([
+        loadPublicStatus(),
+        loadNotificationSummary(),
+        loadTodayReservations(),
+      ]);
+
+      renderAll();
+    }
+
+    async function adminFetch(path, options = {}) {
+      const res = await fetch(path, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Token": adminToken,
+          ...(options.headers || {}),
+        },
+        body: options.body && typeof options.body !== "string"
+          ? JSON.stringify(options.body)
+          : options.body,
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data || data.ok === false) {
+        const error = new Error(data?.error || `APIエラー: ${res.status}`);
+        error.status = res.status;
+        error.data = data;
+        throw error;
+      }
+
+      return data;
+    }
+
+    async function loadPublicStatus() {
+      try {
+        const data = await fetch("/api/public/status").then((res) => res.json());
+        currentShopStatus = data.status || null;
+
+        const status = currentShopStatus?.status || "open";
+        const message = currentShopStatus?.message || SHOP_STATUS_LABELS[status] || "空席あり";
+
+        document.getElementById("shop-status-message").value = message;
+        document.getElementById("shop-status-current").innerText =
+          `現在のお客様表示：${message}`;
+
+        renderStatusButtons(status);
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById("shop-status-current").innerText = "店舗ステータスを取得できませんでした。";
+      }
+    }
+
+    async function quickShopStatus(status, message) {
+      document.getElementById("shop-status-message").value = message;
+      await saveShopStatus(status);
+    }
+
+    async function saveShopStatus(statusOverride = null) {
+      try {
+        const message = document.getElementById("shop-status-message").value.trim() || "空席あり";
+        const status = statusOverride || inferShopStatus(message);
+
+        await adminFetch("/api/admin/shop-status", {
+          method: "POST",
+          body: {
+            status,
+            message,
+            actorId: "owner_ipad",
+          },
+        });
+
+        currentShopStatus = {
+          status,
+          message,
+        };
+
+        document.getElementById("shop-status-current").innerText =
+          `現在のお客様表示：${message}`;
+
+        renderStatusButtons(status);
+        renderAll();
+        showToast("店舗ステータスを更新しました。");
+
+      } catch (err) {
+        alert("店舗ステータスを保存できませんでした。\n" + err.message);
+      }
+    }
+
+    function inferShopStatus(message) {
+      if (message.includes("満席")) return "full";
+      if (message.includes("わずか")) return "few";
+      if (message.includes("終了") || message.includes("休")) return "closed";
+      return "open";
+    }
+
+    function renderStatusButtons(status) {
+      for (const key of ["open", "few", "full", "closed"]) {
+        const button = document.getElementById(`status-${key}`);
+
+        if (!button) continue;
+
+        button.className = "status-btn";
+
+        if (key === status) {
+          button.classList.add(`active-${key}`);
+        }
+      }
+    }
+
+    async function loadNotificationSummary() {
+      try {
+        const data = await adminFetch("/api/admin/notifications/summary");
+        notificationSummary = data.summary || {};
+      } catch (err) {
+        console.error(err);
+        notificationSummary = {};
+      }
+    }
+
+    async function loadTodayReservations() {
+      const today = getTodayDateString();
+      const data = await adminFetch(`/api/admin/day?date=${encodeURIComponent(today)}`);
+      reservations = data.reservations || [];
+    }
+
+    async function runDemoReset() {
+      const confirmed = confirm(
+        "営業前DEMOデータを準備します。\n\n今日基準で予約・顧客・通知待ちを作り直します。\n実行してよろしいですか？"
+      );
+
+      if (!confirmed) return;
+
+      const button = document.getElementById("btn-demo-reset");
+      const resultBox = document.getElementById("demo-reset-result");
+
+      try {
+        if (button) {
+          button.disabled = true;
+          button.innerText = "準備中...";
+          button.className = "btn bg-stone-400 text-white";
+        }
+
+        if (resultBox) {
+          resultBox.innerText = "営業前DEMOデータを準備しています...";
+        }
+
+        const data = await adminFetch("/api/admin/demo-reset", {
+          method: "POST",
+          body: {
+            shopId: SHOP_ID,
+            actorId: "owner_ipad",
+          },
+        });
+
+        const result = data.result || {};
+        const message = result.message || data.message || "営業前DEMOデータを準備しました。";
+
+        if (resultBox) {
+          resultBox.innerText =
+            `${message} 予約 ${result.today_active_reservations ?? "-"}件 / 人数 ${result.today_guests ?? "-"}名 / 仮予約 ${result.pending_reservations ?? "-"}件 / 通知待ち ${result.queued_notifications ?? "-"}件`;
+        }
+
+        activeTab = "today";
+        await reloadAll();
+        showToast("営業前DEMOデータを準備しました。");
+
+      } catch (err) {
+        console.error(err);
+        if (resultBox) {
+          resultBox.innerText = "営業前DEMO準備に失敗しました。" + err.message;
+        }
+        alert("営業前DEMO準備に失敗しました。\n" + err.message);
+
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerText = "営業前DEMO準備";
+          button.className = "btn bg-amber-500 text-stone-950";
+        }
+      }
+    }
+
+    function setTab(tab) {
+      activeTab = tab;
+      renderAll();
+    }
+
+    function renderAll() {
+      renderTabs();
+      renderTop();
+      renderContent();
+    }
+
+    function renderTabs() {
+      for (const tab of ["today", "pending", "ready", "notifications", "history"]) {
+        const button = document.getElementById(`tab-${tab}`);
+
+        if (!button) continue;
+
+        button.className = "tab-btn";
+
+        if (activeTab === tab) {
+          button.classList.add("active");
+        }
+      }
+    }
+
+    function renderTop() {
+      const active = getActiveReservations();
+      const pending = active.filter((res) => res.status === "pending");
+      const confirmed = active.filter((res) => res.status === "confirmed");
+      const guests = active.reduce((sum, res) => sum + Number(res.party_size || 0), 0);
+      const queued = Number(notificationSummary.queuedCount || 0);
+      const statusMessage = currentShopStatus?.message || "空席あり";
+
+      document.getElementById("top-summary").innerText =
+        `お客様側の表示は「${statusMessage}」。本日は ${active.length}件 / ${guests}名、仮予約 ${pending.length}件、通知待ち ${queued}件です。`;
+
+      document.getElementById("top-stats").innerHTML = `
+        ${renderStat("予約", `${active.length}件`, "本日の有効予約")}
+        ${renderStat("人数", `${guests}名`, "来店予定")}
+        ${renderStat("仮予約", `${pending.length}件`, "確定連絡が必要")}
+        ${renderStat("確定", `${confirmed.length}件`, "来店準備対象")}
+        ${renderStat("通知待ち", `${queued}件`, "PC管理画面でも確認")}
+      `;
+    }
+
+    function renderStat(label, value, note) {
+      return `
+        <div class="stat-card">
+          <p class="text-xs font-black text-orange-100">${escapeHtml(label)}</p>
+          <p class="text-3xl font-black mt-1">${escapeHtml(value)}</p>
+          <p class="text-[11px] text-orange-100 mt-1">${escapeHtml(note)}</p>
+        </div>
+      `;
+    }
+
+    function renderContent() {
+      const area = document.getElementById("content-area");
+
+      if (activeTab === "notifications") {
+        area.innerHTML = renderNotificationsPanel();
+        return;
+      }
+
+      const list = getListForTab();
+
+      if (!list.length) {
+        area.innerHTML = `
+          <div class="panel p-8 text-center text-stone-400 font-black">
+            ${getEmptyMessage()}
+          </div>
+        `;
+        return;
+      }
+
+      area.innerHTML = list.map(renderReservationCard).join("");
+    }
+
+    function getListForTab() {
+      if (activeTab === "pending") {
+        return reservations
+          .filter((res) => res.status === "pending")
+          .sort(sortByTime);
+      }
+
+      if (activeTab === "ready") {
+        return reservations
+          .filter((res) => res.status === "confirmed")
+          .sort(sortByTime);
+      }
+
+      if (activeTab === "history") {
+        return reservations
+          .filter((res) => !["pending", "confirmed"].includes(res.status))
+          .sort(sortByTime);
+      }
+
+      return reservations
+        .filter((res) => ["pending", "confirmed"].includes(res.status))
+        .sort((a, b) => {
+          const aPriority = a.status === "pending" ? 0 : 1;
+          const bPriority = b.status === "pending" ? 0 : 1;
+
+          if (aPriority !== bPriority) return aPriority - bPriority;
+
+          const aHasRequest = hasRequest(a) ? 0 : 1;
+          const bHasRequest = hasRequest(b) ? 0 : 1;
+
+          if (aHasRequest !== bHasRequest) return aHasRequest - bHasRequest;
+
+          return sortByTime(a, b);
+        });
+    }
+
+    function getEmptyMessage() {
+      if (activeTab === "pending") return "仮予約はありません。";
+      if (activeTab === "ready") return "来店準備の予約はありません。";
+      if (activeTab === "history") return "履歴はありません。";
+      return "本日の予約はありません。";
+    }
+
+    function renderReservationCard(res) {
+      const displayName = getReservationDisplayName(res);
+      const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
+      const statusLabel = STATUS_LABELS[res.status] || res.status;
+      const lineName = res.line_name || "";
+      const preferences = Array.isArray(res.preferences) ? res.preferences : [];
+      const customer = getCustomer(res);
+      const isActive = ["pending", "confirmed"].includes(res.status);
+
+      return `
+        <article class="panel p-4 md:p-5 ${isActive ? "" : "opacity-75"}">
+          <div class="flex flex-col xl:flex-row xl:items-start gap-4">
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-3xl font-black text-stone-950">${escapeHtml(formatTime(res.reserve_time))}</span>
+                <span class="${getStatusBadgeClass(res.status)}">${escapeHtml(statusLabel)}</span>
+                ${res.is_special_day ? `<span class="badge bg-purple-100 text-purple-700">特別日</span>` : ""}
+                ${hasRequest(res) ? `<span class="badge bg-orange-100 text-orange-700">要望あり</span>` : ""}
+              </div>
+
+              <div class="mt-3">
+                <h3 class="text-2xl font-black text-stone-950">${escapeHtml(displayName)} 様</h3>
+                <p class="text-base font-bold text-stone-600 mt-1">
+                  ${Number(res.party_size || 0)}名 / ${escapeHtml(seatLabel)}
+                </p>
+
+                ${lineName && lineName !== displayName ? `
+                  <p class="text-xs text-stone-400 mt-1">LINE名：${escapeHtml(lineName)}</p>
+                ` : ""}
+
+                <p class="text-xs text-stone-400 mt-1">
+                  来店 ${customer.visit_count || 0}回 / 無断 ${customer.no_show_count || 0}回
+                </p>
+              </div>
+
+              ${preferences.length ? `
+                <div class="flex flex-wrap gap-1 mt-3">
+                  ${preferences.map((item) => `<span class="badge bg-stone-100 text-stone-600">${escapeHtml(item)}</span>`).join("")}
+                </div>
+              ` : ""}
+
+              ${res.customer_note ? `
+                <div class="bg-orange-50 border border-orange-100 rounded-2xl p-3 text-sm text-orange-950 font-bold mt-3 leading-relaxed">
+                  ${escapeHtml(res.customer_note)}
+                </div>
+              ` : ""}
+
+              <div class="bg-stone-50 border border-stone-200 rounded-2xl p-3 text-sm text-stone-700 mt-3">
+                <p class="text-xs font-black text-orange-700">次の一手</p>
+                <p class="font-bold mt-1">${escapeHtml(getNextActionText(res))}</p>
+              </div>
+            </div>
+
+            <div class="xl:w-[360px] grid grid-cols-2 gap-2">
+              ${res.status === "pending" ? `
+                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'confirmed')" class="btn bg-emerald-600 text-white">
+                  予約確定
+                </button>
+              ` : ""}
+
+              ${res.status === "confirmed" ? `
+                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'completed')" class="btn bg-blue-600 text-white">
+                  来店済み
+                </button>
+              ` : ""}
+
+              ${["pending", "confirmed"].includes(res.status) ? `
+                <button onclick="openMessageModal('${escapeJs(res.id)}', '${res.status === "pending" ? "confirm" : "reminder"}')" class="btn bg-orange-600 text-white">
+                  LINE文面
+                </button>
+              ` : ""}
+
+              <button onclick="copyReservationName('${escapeJs(displayName)}')" class="btn bg-white border border-stone-200 text-stone-700">
+                名前コピー
+              </button>
+
+              ${["pending", "confirmed"].includes(res.status) ? `
+                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'cancelled_shop')" class="btn bg-stone-700 text-white">
+                  店舗キャンセル
+                </button>
+              ` : ""}
+
+              ${res.status === "confirmed" ? `
+                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'no_show')" class="btn bg-red-600 text-white">
+                  無断キャンセル
+                </button>
+              ` : ""}
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderNotificationsPanel() {
+      const queued = Number(notificationSummary.queuedCount || 0);
+      const failed = Number(notificationSummary.failedCount || 0);
+      const sentRecent = Number(notificationSummary.sentRecentCount || 0);
+      const byType = notificationSummary.queuedByType || {};
+      const typeLines = Object.entries(byType).map(([type, count]) => {
+        return `${NOTIFY_TYPE_LABELS[type] || type}：${count}件`;
+      });
+
+      return `
+        <section class="panel p-5">
+          <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-black">通知確認</h2>
+              <p class="text-sm text-stone-500 mt-2 leading-relaxed">
+                iPadでは確認中心です。LINE通知の一括送信や細かい通知管理はPC管理画面で行う運用にしています。
+              </p>
+            </div>
+            <a href="./admin.html" class="btn bg-stone-950 text-white inline-flex items-center justify-center">
+              PC管理画面で通知管理
+            </a>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3 mt-5">
+            <div class="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+              <p class="text-xs font-black text-blue-700">通知待ち</p>
+              <p class="text-3xl font-black text-blue-700 mt-1">${queued}</p>
+            </div>
+            <div class="bg-red-50 border border-red-100 rounded-2xl p-4">
+              <p class="text-xs font-black text-red-700">失敗</p>
+              <p class="text-3xl font-black text-red-700 mt-1">${failed}</p>
+            </div>
+            <div class="bg-stone-50 border border-stone-200 rounded-2xl p-4">
+              <p class="text-xs font-black text-stone-600">最近送信</p>
+              <p class="text-3xl font-black text-stone-700 mt-1">${sentRecent}</p>
+            </div>
+          </div>
+
+          <div class="bg-stone-50 border border-stone-200 rounded-2xl p-4 text-sm text-stone-600 font-bold mt-5">
+            ${typeLines.length ? typeLines.map(escapeHtml).join(" / ") : "通知待ちはありません。"}
+          </div>
+
+          <button onclick="reloadAll()" class="btn bg-orange-600 text-white mt-4">
+            最新情報に更新
+          </button>
+        </section>
+      `;
+    }
+
+    async function changeReservationStatus(reservationId, status) {
+      let reason = null;
+
+      if (status === "cancelled_shop") {
+        reason = prompt("店舗キャンセル理由を入力してください。", "店舗都合");
+        if (reason === null) return;
+      }
+
+      if (status === "no_show") {
+        reason = prompt("無断キャンセル理由・メモを入力してください。", "無断キャンセル");
+        if (reason === null) return;
+      }
+
+      try {
+        await adminFetch("/api/admin/reservations/status", {
+          method: "POST",
+          body: {
+            reservationId,
+            status,
+            reason,
+            actorId: "owner_ipad",
+          },
+        });
+
+        showToast("予約ステータスを更新しました。");
+
+        await Promise.allSettled([
+          loadTodayReservations(),
+          loadNotificationSummary(),
+        ]);
+
+        renderAll();
+
+      } catch (err) {
+        alert("ステータス更新に失敗しました。\n" + err.message);
+      }
+    }
+
+    function openMessageModal(reservationId, type = "confirm") {
+      const reservation = reservations.find((item) => String(item.id) === String(reservationId));
+
+      if (!reservation) {
+        showToast("予約情報が見つかりません。");
+        return;
+      }
+
+      messageTargetReservationId = reservationId;
+      document.getElementById("message-textarea").value = buildLineMessage(reservation, type);
+      document.getElementById("message-modal-result").innerText = "";
+      document.getElementById("message-modal").classList.remove("hidden");
+    }
+
+    function closeMessageModal() {
+      document.getElementById("message-modal").classList.add("hidden");
+      messageTargetReservationId = null;
+    }
+
+    function copyMessageFromModal() {
+      const text = document.getElementById("message-textarea").value;
+
+      navigator.clipboard.writeText(text).then(() => {
+        document.getElementById("message-modal-result").innerText = "コピーしました。LINE管理画面やトーク画面に貼り付けて送信してください。";
+        showToast("LINE文面をコピーしました。");
+      }).catch(() => {
+        prompt("コピーしてください", text);
+      });
+    }
+
+    function buildLineMessage(reservation, type = "confirm") {
+      const name = getReservationDisplayName(reservation);
+      const date = reservation.reserve_date || getTodayDateString();
+      const time = formatTime(reservation.reserve_time);
+      const partySize = Number(reservation.party_size || 0);
+      const seatLabel = SEAT_LABELS[reservation.seat_type] || reservation.seat_type || "指定なし";
+      const preferences = Array.isArray(reservation.preferences) && reservation.preferences.length
+        ? `\nご要望：${reservation.preferences.join(" / ")}`
+        : "";
+
+      if (type === "reminder") {
+        return `${name}様\n\n居酒屋DPROです。\nご予約の確認です。\n\n日時：${date} ${time}\n人数：${partySize}名\nお席：${seatLabel}${preferences}\n\nご来店をお待ちしております。`;
+      }
+
+      return `${name}様\n\n居酒屋DPROです。\nご予約リクエストありがとうございます。\n\n日時：${date} ${time}\n人数：${partySize}名\nお席：${seatLabel}${preferences}\n\nこちらの内容でご予約を承りました。\nご来店をお待ちしております。`;
+    }
+
+    function copyReservationName(name) {
+      navigator.clipboard.writeText(name).then(() => {
+        showToast(`予約名をコピーしました：${name}`);
+      }).catch(() => {
+        prompt("コピーしてください", name);
+      });
+    }
+
+    function getActiveReservations() {
+      return reservations.filter((res) => ["pending", "confirmed"].includes(res.status));
+    }
+
+    function hasRequest(res) {
+      return Boolean(res.customer_note) || (Array.isArray(res.preferences) && res.preferences.length > 0);
+    }
+
+    function sortByTime(a, b) {
+      return String(a.reserve_time || "").localeCompare(String(b.reserve_time || ""));
+    }
+
+    function getReservationDisplayName(res) {
+      return res.reservation_name || res.line_name || "お客様";
+    }
+
+    function getCustomer(res) {
+      if (Array.isArray(res.customer)) {
+        return res.customer[0] || {};
+      }
+
+      return res.customer || {};
+    }
+
+    function getNextActionText(res) {
+      const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
+
+      if (res.status === "pending") {
+        return `席と要望を確認して予約確定。${Number(res.party_size || 0)}名 / ${seatLabel}`;
+      }
+
+      if (res.status === "confirmed") {
+        if (hasRequest(res)) {
+          return "席希望・メモ・アレルギーなどをスタッフへ共有。来店後は来店済みに変更。";
+        }
+
+        return "来店時間と人数を確認。来店後は来店済みに変更。";
+      }
+
+      if (res.status === "completed") {
+        return "来店済み。必要に応じてPC管理画面で顧客情報を更新。";
+      }
+
+      if (res.status === "no_show") {
+        return "無断キャンセル。次回対応のためPC管理画面でメモ確認。";
+      }
+
+      return "履歴として確認できます。";
+    }
+
+    function getStatusBadgeClass(status) {
+      if (status === "pending") return "badge bg-amber-100 text-amber-700";
+      if (status === "confirmed") return "badge bg-emerald-100 text-emerald-700";
+      if (status === "completed") return "badge bg-blue-100 text-blue-700";
+      if (status === "no_show") return "badge bg-red-100 text-red-700";
+      return "badge bg-stone-100 text-stone-600";
+    }
+
+    function getTodayDateString() {
+      const date = new Date();
+      const formatter = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+
+      const parts = formatter.formatToParts(date);
+      const year = parts.find((part) => part.type === "year").value;
+      const month = parts.find((part) => part.type === "month").value;
+      const day = parts.find((part) => part.type === "day").value;
+
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatTime(value) {
+      if (!value) return "";
+      return String(value).slice(0, 5);
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.innerText = message;
+      toast.classList.remove("hidden");
+
+      setTimeout(() => {
+        toast.classList.add("hidden");
+      }, 2400);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeJs(value) {
+      return String(value ?? "")
+        .replaceAll("\\", "\\\\")
+        .replaceAll("'", "\\'")
+        .replaceAll("\n", "\\n")
+        .replaceAll("\r", "");
+    }
+  </script>
+</body>
+</html>
