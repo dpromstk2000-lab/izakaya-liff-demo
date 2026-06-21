@@ -88,10 +88,48 @@
     .small-input:focus {
       border-color: #f59e0b;
     }
+
+    .hero-panel {
+      background:
+        radial-gradient(circle at top left, rgba(251, 191, 36, 0.18), transparent 34%),
+        linear-gradient(135deg, #ffffff, #fff7ed);
+      border: 1px solid #fed7aa;
+      border-radius: 1.5rem;
+      box-shadow: 0 18px 45px rgba(120, 53, 15, 0.08);
+    }
+
+    .today-stat {
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid #fed7aa;
+      border-radius: 1rem;
+      padding: 1rem;
+    }
+
+    .action-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 1.1rem;
+      padding: 1rem;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    }
+
+    .warm-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      font-size: 11px;
+      font-weight: 900;
+      padding: .25rem .55rem;
+      border-radius: 999px;
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fed7aa;
+    }
+
   </style>
 </head>
 
-<body class="bg-slate-100 text-slate-800 min-h-screen pb-20">
+<body class="bg-stone-100 text-slate-800 min-h-screen pb-20">
 
   <div id="toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[300] bg-slate-900 text-white text-sm font-black px-4 py-3 rounded-xl shadow-lg"></div>
 
@@ -116,7 +154,7 @@
 
   <!-- App -->
   <section id="app-section" class="hidden">
-    <header class="bg-slate-900 text-white">
+    <header class="bg-stone-950 text-white">
       <div class="max-w-7xl mx-auto px-4 py-5">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -138,7 +176,77 @@
 
     <main class="max-w-7xl mx-auto px-4 py-5 space-y-5">
 
-      <!-- Top cards -->
+
+      <!-- STEP IZ-1：今日の営業コックピット -->
+      <section class="hero-panel p-5 md:p-6 space-y-5">
+        <div class="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
+          <div>
+            <p class="text-[10px] tracking-[0.32em] text-orange-700 font-black">TODAY'S SERVICE</p>
+            <h2 class="text-2xl md:text-3xl font-black mt-2">今日の営業</h2>
+            <p id="today-operation-summary" class="text-sm text-slate-600 mt-2 leading-relaxed">
+              本日の予約・人数・仮予約・LINE通知を読み込み中...
+            </p>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+            <button onclick="setToday()" class="btn bg-white border border-orange-200 text-orange-800 text-sm">
+              今日を見る
+            </button>
+            <button onclick="loadDashboard()" class="btn bg-orange-600 text-white text-sm">
+              最新情報に更新
+            </button>
+            <button onclick="openSettings()" class="btn bg-stone-900 text-white text-sm">
+              店舗設定
+            </button>
+          </div>
+        </div>
+
+        <div id="today-operation-stats" class="grid grid-cols-2 lg:grid-cols-5 gap-3"></div>
+
+        <div class="grid xl:grid-cols-[1.2fr_.8fr] gap-4">
+          <div class="panel p-4 md:p-5">
+            <div class="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h3 class="text-lg font-black">優先確認リスト</h3>
+                <p class="text-xs text-slate-500 mt-1">
+                  仮予約・席の希望・メモ・人数を上から確認すれば、当日の連絡漏れを防げます。
+                </p>
+              </div>
+            </div>
+            <div id="today-action-list" class="space-y-3">
+              <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center text-slate-400 font-bold">
+                読み込み中...
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div class="panel p-4 md:p-5">
+              <div class="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 class="font-black">仮予約</h3>
+                  <p class="text-xs text-slate-500 mt-1">確定連絡が必要な予約</p>
+                </div>
+                <span id="pending-mini-count" class="badge bg-amber-100 text-amber-700">-件</span>
+              </div>
+              <div id="pending-mini-list" class="space-y-2"></div>
+            </div>
+
+            <div class="panel p-4 md:p-5">
+              <div class="flex items-start justify-between gap-3 mb-3">
+                <div>
+                  <h3 class="font-black">来店準備</h3>
+                  <p class="text-xs text-slate-500 mt-1">人数・席・要望を事前確認</p>
+                </div>
+                <span id="confirmed-mini-count" class="badge bg-emerald-100 text-emerald-700">-件</span>
+              </div>
+              <div id="confirmed-mini-list" class="space-y-2"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 操作カード -->
       <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div class="panel p-5">
           <h2 class="text-lg font-black">店舗ステータス</h2>
@@ -625,6 +733,7 @@
         reservations = data.reservations || [];
 
         renderDaySummary(data.summary || {});
+        renderTodayOperation(data.summary || {});
         renderReservations();
 
       } catch (err) {
@@ -659,6 +768,264 @@
       `;
     }
 
+
+    function renderTodayOperation(summary) {
+      const selectedDate = document.getElementById("admin-date").value || getTodayDateString();
+      const isToday = selectedDate === getTodayDateString();
+
+      const active = (reservations || []).filter((reservation) => {
+        return ["pending", "confirmed"].includes(reservation.status);
+      });
+
+      const pending = active.filter((reservation) => reservation.status === "pending");
+      const confirmed = active.filter((reservation) => reservation.status === "confirmed");
+      const guests = active.reduce((sum, reservation) => sum + Number(reservation.party_size || 0), 0);
+      const requestCount = active.filter((reservation) => {
+        return Boolean(reservation.customer_note) || (Array.isArray(reservation.preferences) && reservation.preferences.length);
+      }).length;
+
+      const queuedText = document.getElementById("queued-count")?.innerText || "-";
+
+      const summaryBox = document.getElementById("today-operation-summary");
+      if (summaryBox) {
+        summaryBox.innerText = `${isToday ? "本日" : "選択日"}は ${active.length}件 / ${guests}名。仮予約 ${pending.length}件、要望確認 ${requestCount}件。LINE通知待ちは ${queuedText}件です。`;
+      }
+
+      const statsBox = document.getElementById("today-operation-stats");
+      if (statsBox) {
+        statsBox.innerHTML = `
+          ${renderTodayStat("予約", `${active.length}件`, "来店予定", "text-orange-700")}
+          ${renderTodayStat("人数", `${guests}名`, "席・配席の目安", "text-slate-900")}
+          ${renderTodayStat("仮予約", `${pending.length}件`, "確定連絡が必要", "text-amber-700")}
+          ${renderTodayStat("確定", `${confirmed.length}件`, "来店準備対象", "text-emerald-700")}
+          ${renderTodayStat("通知待ち", `${queuedText}件`, "LINE通知キュー", "text-blue-700")}
+        `;
+      }
+
+      renderTodayActionList(active);
+      renderMiniReservationList("pending-mini-list", "pending-mini-count", pending, "pending");
+      renderMiniReservationList("confirmed-mini-list", "confirmed-mini-count", confirmed.slice(0, 5), "confirmed");
+    }
+
+    function renderTodayStat(label, value, note, colorClass) {
+      return `
+        <div class="today-stat">
+          <p class="text-xs font-black text-slate-500">${escapeHtml(label)}</p>
+          <p class="text-3xl font-black ${colorClass} mt-1">${escapeHtml(value)}</p>
+          <p class="text-[11px] text-slate-500 mt-1">${escapeHtml(note)}</p>
+        </div>
+      `;
+    }
+
+    function renderTodayActionList(activeReservations) {
+      const box = document.getElementById("today-action-list");
+      if (!box) return;
+
+      const items = buildTodayActionItems(activeReservations);
+
+      if (!items.length) {
+        box.innerHTML = `
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-center text-slate-500 font-bold">
+            優先対応はありません。<br>
+            空席状況や前日リマインドを確認してください。
+          </div>
+        `;
+        return;
+      }
+
+      box.innerHTML = items.slice(0, 8).map(renderTodayActionCard).join("");
+    }
+
+    function buildTodayActionItems(activeReservations) {
+      const sorted = [...(activeReservations || [])].sort((a, b) => {
+        const aScore = a.status === "pending" ? 0 : 1;
+        const bScore = b.status === "pending" ? 0 : 1;
+
+        if (aScore !== bScore) return aScore - bScore;
+
+        return String(a.reserve_time || "").localeCompare(String(b.reserve_time || ""));
+      });
+
+      return sorted.map((reservation) => {
+        const preferences = Array.isArray(reservation.preferences) ? reservation.preferences : [];
+        const hasRequest = Boolean(reservation.customer_note) || preferences.length > 0;
+
+        if (reservation.status === "pending") {
+          return {
+            reservation,
+            badge: "仮予約",
+            badgeClass: "bg-amber-100 text-amber-700",
+            title: "予約確定の連絡",
+            nextAction: "人数・席希望・要望を確認して、予約確定のLINEを送る"
+          };
+        }
+
+        if (hasRequest) {
+          return {
+            reservation,
+            badge: "要望あり",
+            badgeClass: "bg-orange-100 text-orange-700",
+            title: "席・要望の事前確認",
+            nextAction: "静かな席・誕生日・子連れ・アレルギーなどを来店前に確認"
+          };
+        }
+
+        return {
+          reservation,
+          badge: "来店準備",
+          badgeClass: "bg-emerald-100 text-emerald-700",
+          title: "来店前の最終確認",
+          nextAction: "来店時間・人数を確認して、必要ならリマインドを送る"
+        };
+      });
+    }
+
+    function renderTodayActionCard(item) {
+      const res = item.reservation;
+      const displayName = getReservationDisplayName(res);
+      const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
+      const preferences = Array.isArray(res.preferences) ? res.preferences : [];
+
+      return `
+        <article class="action-card">
+          <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="badge ${item.badgeClass}">${escapeHtml(item.badge)}</span>
+                <span class="warm-chip">${escapeHtml(formatTime(res.reserve_time))}</span>
+                <span class="text-sm font-black text-slate-700">${Number(res.party_size || 0)}名 / ${escapeHtml(seatLabel)}</span>
+              </div>
+
+              <h4 class="text-lg font-black text-slate-900 mt-2">${escapeHtml(displayName)} 様</h4>
+              <p class="text-sm font-bold text-slate-700 mt-1">${escapeHtml(item.title)}</p>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">${escapeHtml(item.nextAction)}</p>
+
+              ${preferences.length ? `
+                <div class="flex flex-wrap gap-1 mt-3">
+                  ${preferences.map((item) => `<span class="badge bg-slate-100 text-slate-600">${escapeHtml(item)}</span>`).join("")}
+                </div>
+              ` : ""}
+
+              ${res.customer_note ? `
+                <div class="bg-orange-50 border border-orange-100 rounded-2xl p-3 text-sm text-orange-900 mt-3">
+                  ${escapeHtml(res.customer_note)}
+                </div>
+              ` : ""}
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 lg:w-[300px] shrink-0">
+              ${res.status === "pending" ? `
+                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'confirmed')" class="btn bg-emerald-600 text-white text-xs">予約確定</button>
+              ` : `
+                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'completed')" class="btn bg-blue-600 text-white text-xs">来店済み</button>
+              `}
+              <button onclick="copyLineMessage('${escapeJs(res.id)}', '${res.status === "pending" ? "confirm" : "reminder"}')" class="btn bg-orange-600 text-white text-xs">LINE文面</button>
+              <button onclick="copyReservationName('${escapeJs(displayName)}')" class="btn bg-white border border-slate-200 text-slate-700 text-xs">名前コピー</button>
+              <button onclick="scrollToReservation('${escapeJs(res.id)}')" class="btn bg-slate-100 text-slate-700 text-xs">詳細へ</button>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderMiniReservationList(listId, countId, items, mode) {
+      const list = document.getElementById(listId);
+      const count = document.getElementById(countId);
+
+      if (count) {
+        count.innerText = `${items.length}件`;
+      }
+
+      if (!list) return;
+
+      if (!items.length) {
+        list.innerHTML = `
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center text-slate-400 font-bold text-sm">
+            対象はありません
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = items.slice(0, 5).map((res) => {
+        const displayName = getReservationDisplayName(res);
+        const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
+
+        return `
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <p class="font-black text-slate-900 truncate">${escapeHtml(formatTime(res.reserve_time))} ${escapeHtml(displayName)} 様</p>
+                <p class="text-xs text-slate-500 mt-1">${Number(res.party_size || 0)}名 / ${escapeHtml(seatLabel)}</p>
+              </div>
+              ${mode === "pending" ? `
+                <button onclick="changeReservationStatus('${escapeJs(res.id)}', 'confirmed')" class="bg-emerald-600 text-white text-[11px] font-black px-3 py-2 rounded-xl shrink-0">
+                  確定
+                </button>
+              ` : `
+                <button onclick="copyLineMessage('${escapeJs(res.id)}', 'reminder')" class="bg-orange-100 text-orange-700 text-[11px] font-black px-3 py-2 rounded-xl shrink-0">
+                  文面
+                </button>
+              `}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function scrollToReservation(reservationId) {
+      const target = document.getElementById(`reservation-card-${reservationId}`);
+      if (!target) {
+        showToast("予約詳細が見つかりません。");
+        return;
+      }
+
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.add("ring-2", "ring-orange-300");
+
+      setTimeout(() => {
+        target.classList.remove("ring-2", "ring-orange-300");
+      }, 1600);
+    }
+
+    function copyLineMessage(reservationId, type = "confirm") {
+      const reservation = (reservations || []).find((item) => String(item.id) === String(reservationId));
+
+      if (!reservation) {
+        showToast("予約情報が見つかりません。");
+        return;
+      }
+
+      const message = buildLineMessage(reservation, type);
+
+      navigator.clipboard.writeText(message).then(() => {
+        showToast("LINE文面をコピーしました。");
+      }).catch(() => {
+        prompt("コピーしてください", message);
+      });
+    }
+
+    function buildLineMessage(reservation, type = "confirm") {
+      const name = getReservationDisplayName(reservation);
+      const date = reservation.reserve_date || document.getElementById("admin-date")?.value || "";
+      const time = formatTime(reservation.reserve_time) || "";
+      const partySize = Number(reservation.party_size || 0);
+      const seatLabel = SEAT_LABELS[reservation.seat_type] || reservation.seat_type || "指定なし";
+      const preferences = Array.isArray(reservation.preferences) && reservation.preferences.length
+        ? `\nご要望：${reservation.preferences.join(" / ")}`
+        : "";
+
+      if (type === "reminder") {
+        return `${name}様\n\n居酒屋DPROです。\nご予約の確認です。\n\n日時：${date} ${time}\n人数：${partySize}名\nお席：${seatLabel}${preferences}\n\nご来店をお待ちしております。`;
+      }
+
+      if (type === "change") {
+        return `${name}様\n\n居酒屋DPROです。\nご予約内容について確認させてください。\n\nご希望日時：${date} ${time}\n人数：${partySize}名\n\n確認でき次第、あらためてご連絡いたします。`;
+      }
+
+      return `${name}様\n\n居酒屋DPROです。\nご予約リクエストありがとうございます。\n\n日時：${date} ${time}\n人数：${partySize}名\nお席：${seatLabel}${preferences}\n\nこちらの内容でご予約を承りました。\nご来店をお待ちしております。`;
+    }
+
     function renderReservations() {
       const list = document.getElementById("reservation-list");
 
@@ -684,7 +1051,7 @@
       const isInactive = !["pending", "confirmed"].includes(res.status);
 
       return `
-        <article class="panel p-5 ${isInactive ? "opacity-60" : ""}">
+        <article id="reservation-card-${escapeHtml(res.id)}" class="panel p-5 ${isInactive ? "opacity-60" : ""}">
           <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div class="min-w-0">
               <div class="flex flex-wrap items-center gap-2">
@@ -740,6 +1107,11 @@
               ` : ""}
             </div>
 
+              <div class="bg-orange-50 border border-orange-100 rounded-2xl p-3 text-sm text-orange-900 mt-3">
+                <p class="font-black text-xs text-orange-700">次の一手</p>
+                <p class="font-bold mt-1">${escapeHtml(getNextActionText(res))}</p>
+              </div>
+
             <div class="lg:w-[420px] space-y-3">
               <div class="grid grid-cols-2 gap-2">
                 ${renderStatusButton(res, "confirmed", "確定", "bg-emerald-600 text-white")}
@@ -747,6 +1119,9 @@
                 ${renderStatusButton(res, "completed", "来店済み", "bg-blue-600 text-white")}
                 ${renderStatusButton(res, "no_show", "無断キャンセル", "bg-red-600 text-white")}
                 ${renderStatusButton(res, "cancelled_shop", "店舗キャンセル", "bg-slate-700 text-white")}
+                <button onclick="copyLineMessage('${escapeJs(res.id)}', '${res.status === "pending" ? "confirm" : "reminder"}')" class="btn bg-orange-600 text-white text-sm">
+                  LINE文面
+                </button>
                 <button onclick="copyReservationName('${escapeJs(displayName)}')" class="btn bg-white border border-slate-200 text-slate-700 text-sm">
                   名前コピー
                 </button>
@@ -863,6 +1238,38 @@
       } catch (err) {
         alert("顧客情報を保存できませんでした。\n" + err.message);
       }
+    }
+
+
+    function getNextActionText(res) {
+      const preferences = Array.isArray(res.preferences) ? res.preferences : [];
+      const seatLabel = SEAT_LABELS[res.seat_type] || res.seat_type || "指定なし";
+
+      if (res.status === "pending") {
+        return `予約確定連絡を送る。人数 ${Number(res.party_size || 0)}名、席希望 ${seatLabel} を確認。`;
+      }
+
+      if (res.status === "confirmed") {
+        if (res.customer_note || preferences.length) {
+          return "来店前に席・要望・メモを確認して、必要ならスタッフへ共有。";
+        }
+
+        return "来店時間と人数を確認。来店後はステータスを来店済みに変更。";
+      }
+
+      if (res.status === "cancelled_customer" || res.status === "cancelled_shop") {
+        return "キャンセル済み。必要に応じて再予約案内を送る。";
+      }
+
+      if (res.status === "completed") {
+        return "来店済み。常連・VIPなど顧客ステータスを必要に応じて更新。";
+      }
+
+      if (res.status === "no_show") {
+        return "無断キャンセル。顧客メモに注意点を残す。";
+      }
+
+      return "予約内容を確認。";
     }
 
     function getReservationDisplayName(res) {
