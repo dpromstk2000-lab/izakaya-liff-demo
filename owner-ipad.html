@@ -204,9 +204,9 @@
             <button onclick="reloadAll()" class="btn bg-white/15 border border-white/15 text-white">
               最新情報に更新
             </button>
-            <a id="pc-admin-link" href="./admin.html" class="btn bg-white text-stone-950 inline-flex items-center justify-center">
+            <button id="pc-admin-link" onclick="openPcAdmin()" class="btn bg-white text-stone-950 inline-flex items-center justify-center">
               PC管理画面へ
-            </a>
+            </button>
           </div>
         </div>
 
@@ -274,7 +274,7 @@
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
         <button onclick="copyMessageFromModal()" class="btn bg-orange-600 text-white">文面コピー</button>
         <button onclick="closeMessageModal()" class="btn bg-stone-100 text-stone-700">閉じる</button>
-        <a href="./admin.html" class="btn bg-stone-950 text-white inline-flex items-center justify-center">PC管理画面</a>
+        <button onclick="openPcAdmin()" class="btn bg-stone-950 text-white inline-flex items-center justify-center">PC管理画面</button>
       </div>
 
       <p id="message-modal-result" class="text-xs text-stone-500 font-bold mt-3"></p>
@@ -283,6 +283,7 @@
 
   <script>
     const ADMIN_TOKEN_KEY = "iz_demo_admin_token";
+    const PC_RETURN_URL_KEY = "iz_demo_pc_admin_return_url";
     const SHOP_ID = "11111111-1111-1111-1111-111111111111";
 
     const STATUS_LABELS = {
@@ -328,6 +329,8 @@
     let messageTargetReservationId = null;
 
     window.addEventListener("DOMContentLoaded", () => {
+      setupPcReturnUrl();
+
       const savedToken = localStorage.getItem(ADMIN_TOKEN_KEY);
 
       if (savedToken) {
@@ -335,6 +338,37 @@
         showApp();
       }
     });
+
+    function setupPcReturnUrl() {
+      const params = new URLSearchParams(location.search);
+      const pcUrl = params.get("pc");
+
+      if (pcUrl) {
+        try {
+          const parsed = new URL(pcUrl, location.href);
+
+          if (parsed.origin === location.origin && parsed.pathname.endsWith("/admin.html")) {
+            localStorage.setItem(PC_RETURN_URL_KEY, parsed.toString());
+          }
+        } catch (err) {
+          console.warn("PC管理画面URLを保存できませんでした", err);
+        }
+      }
+
+      const link = document.getElementById("pc-admin-link");
+
+      if (link) {
+        link.title = getPcAdminUrl();
+      }
+    }
+
+    function getPcAdminUrl() {
+      return localStorage.getItem(PC_RETURN_URL_KEY) || new URL("admin.html", location.href).toString();
+    }
+
+    function openPcAdmin() {
+      location.href = getPcAdminUrl();
+    }
 
     function loginAdmin() {
       const token = document.getElementById("admin-token-input").value.trim();
@@ -771,9 +805,9 @@
                 iPadでは確認中心です。LINE通知の一括送信や細かい通知管理はPC管理画面で行う運用にしています。
               </p>
             </div>
-            <a href="./admin.html" class="btn bg-stone-950 text-white inline-flex items-center justify-center">
+            <button onclick="openPcAdmin()" class="btn bg-stone-950 text-white inline-flex items-center justify-center">
               PC管理画面で通知管理
-            </a>
+            </button>
           </div>
 
           <div class="grid grid-cols-3 gap-3 mt-5">
