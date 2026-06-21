@@ -163,6 +163,9 @@
           </div>
 
           <div class="flex flex-wrap gap-2">
+            <button onclick="openIpadBoard()" class="btn bg-amber-500 text-slate-950 text-sm">
+              iPad営業ボード
+            </button>
             <button onclick="openSettings()" class="btn bg-white text-slate-900 text-sm">
               ⚙ 店舗設定
             </button>
@@ -191,6 +194,9 @@
           <div class="flex flex-col sm:flex-row gap-2 shrink-0">
             <button onclick="setToday()" class="btn bg-white border border-orange-200 text-orange-800 text-sm">
               今日を見る
+            </button>
+            <button onclick="openIpadBoard()" class="btn bg-stone-950 text-white text-sm">
+              iPad営業ボード
             </button>
             <button id="btn-demo-reset" onclick="runDemoReset()" class="btn bg-amber-600 text-white text-sm">
               営業前DEMO準備
@@ -551,6 +557,15 @@
       document.getElementById("login-section").classList.add("hidden");
       document.getElementById("app-section").classList.remove("hidden");
       loadDashboard();
+    }
+
+    function openIpadBoard() {
+      const currentUrl = new URL(location.href);
+      const ipadUrl = new URL("owner-ipad.html", location.href);
+
+      ipadUrl.searchParams.set("pc", currentUrl.toString());
+
+      location.href = ipadUrl.toString();
     }
 
     async function adminFetch(path, options = {}) {
