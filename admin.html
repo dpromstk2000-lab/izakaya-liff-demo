@@ -192,6 +192,9 @@
             <button onclick="setToday()" class="btn bg-white border border-orange-200 text-orange-800 text-sm">
               今日を見る
             </button>
+            <button id="btn-demo-reset" onclick="runDemoReset()" class="btn bg-amber-600 text-white text-sm">
+              営業前DEMO準備
+            </button>
             <button onclick="loadDashboard()" class="btn bg-orange-600 text-white text-sm">
               最新情報に更新
             </button>
@@ -202,6 +205,7 @@
         </div>
 
         <div id="today-operation-stats" class="grid grid-cols-2 lg:grid-cols-5 gap-3"></div>
+        <p id="demo-reset-result" class="text-xs font-bold text-orange-800"></p>
 
         <div class="grid xl:grid-cols-[1.2fr_.8fr] gap-4">
           <div class="panel p-4 md:p-5">
@@ -580,6 +584,77 @@
         loadNotificationSummary(),
         loadAdminDay(),
       ]);
+
+      if (Array.isArray(reservations)) {
+        renderTodayOperation(getCurrentDaySummary());
+      }
+    }
+
+    async function runDemoReset() {
+      const confirmed = confirm(
+        "営業前DEMOデータを準備します。\n\n居酒屋DPROのDEMO用予約・顧客・通知を今日基準で作り直します。\n実行してよろしいですか？"
+      );
+
+      if (!confirmed) return;
+
+      const button = document.getElementById("btn-demo-reset");
+      const resultBox = document.getElementById("demo-reset-result");
+
+      try {
+        if (button) {
+          button.disabled = true;
+          button.className = "btn bg-slate-300 text-white text-sm";
+          button.innerText = "準備中...";
+        }
+
+        if (resultBox) {
+          resultBox.innerText = "営業前DEMOデータを準備しています...";
+        }
+
+        const data = await adminFetch("/api/admin/demo-reset", {
+          method: "POST",
+          body: {
+            shopId: "11111111-1111-1111-1111-111111111111",
+            actorId: "admin_dashboard",
+          },
+        });
+
+        const result = data.result || {};
+        const message = result.message || data.message || "営業前DEMOデータを準備しました。";
+
+        if (resultBox) {
+          resultBox.innerText =
+            `${message} 本日の予約 ${result.today_active_reservations ?? "-"}件 / 人数 ${result.today_guests ?? "-"}名 / 仮予約 ${result.pending_reservations ?? "-"}件 / 通知待ち ${result.queued_notifications ?? "-"}件`;
+        }
+
+        showToast("営業前DEMOデータを準備しました。");
+
+        document.getElementById("admin-date").value = getTodayDateString();
+
+        await Promise.allSettled([
+          loadPublicStatus(),
+          loadNotificationSummary(),
+          loadAdminDay(),
+        ]);
+
+        renderTodayOperation(getCurrentDaySummary());
+
+      } catch (err) {
+        console.error(err);
+
+        if (resultBox) {
+          resultBox.innerText = "営業前DEMO準備に失敗しました。" + err.message;
+        }
+
+        alert("営業前DEMO準備に失敗しました。\n" + err.message);
+
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.className = "btn bg-amber-600 text-white text-sm";
+          button.innerText = "営業前DEMO準備";
+        }
+      }
     }
 
     async function loadPublicStatus() {
@@ -660,6 +735,8 @@
           button.disabled = false;
           button.className = "btn w-full bg-blue-600 text-white mt-4";
         }
+
+        renderTodayOperation(getCurrentDaySummary());
 
       } catch (err) {
         console.error(err);
@@ -768,6 +845,20 @@
       `;
     }
 
+
+
+    function getCurrentDaySummary() {
+      const active = (reservations || []).filter((reservation) => {
+        return ["pending", "confirmed"].includes(reservation.status);
+      });
+
+      return {
+        count: active.length,
+        guests: active.reduce((sum, reservation) => sum + Number(reservation.party_size || 0), 0),
+        pending: active.filter((reservation) => reservation.status === "pending").length,
+        confirmed: active.filter((reservation) => reservation.status === "confirmed").length,
+      };
+    }
 
     function renderTodayOperation(summary) {
       const selectedDate = document.getElementById("admin-date").value || getTodayDateString();
