@@ -130,6 +130,10 @@
 </head>
 
 <body class="bg-stone-100 text-slate-800 min-h-screen pb-20">
+  <div id="embed-demo-banner" style="display:none;position:sticky;top:0;z-index:9999;padding:9px 14px;text-align:center;background:#fff7ed;border-bottom:1px solid #fdba74;color:#9a3412;font-size:12px;font-weight:900;">
+    製品紹介用デモです。閲覧できますが、店舗情報・予約状態・通知などの変更は実行されません。
+  </div>
+
 
   <div id="toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[300] bg-slate-900 text-white text-sm font-black px-4 py-3 rounded-xl shadow-lg"></div>
 
@@ -468,6 +472,25 @@
 
   <script>
     const ADMIN_TOKEN_KEY = "iz_demo_admin_token";
+    const PAGE_PARAMS = new URLSearchParams(window.location.search);
+    const IS_EMBED_DEMO = PAGE_PARAMS.get("embed_demo") === "1";
+    const ORIGINAL_FETCH = window.fetch.bind(window);
+    window.fetch = async function(resource, options = {}) {
+      const method = String(options.method || "GET").toUpperCase();
+
+      if (IS_EMBED_DEMO && method !== "GET") {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: "製品紹介用デモでは更新操作は実行されません。"
+        }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      return ORIGINAL_FETCH(resource, options);
+    };
+
 
     const WEEKDAYS = [
       { dow: 0, label: "日曜" },
@@ -525,6 +548,13 @@
       document.getElementById("admin-date").value = getTodayDateString();
       document.getElementById("reminder-target-date").value = addDaysToDateString(getTodayDateString(), 1);
       document.getElementById("special-target-date").value = getTodayDateString();
+
+      if (IS_EMBED_DEMO) {
+        adminToken = "1234";
+        document.getElementById("embed-demo-banner").style.display = "block";
+        showApp();
+        return;
+      }
 
       const savedToken = localStorage.getItem(ADMIN_TOKEN_KEY);
 

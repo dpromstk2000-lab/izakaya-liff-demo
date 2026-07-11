@@ -114,6 +114,10 @@
 </head>
 
 <body class="bg-stone-100 text-slate-800 min-h-screen pb-24">
+  <div id="embed-demo-banner" style="display:none;position:sticky;top:0;z-index:9999;padding:9px 14px;text-align:center;background:#fff7ed;border-bottom:1px solid #fdba74;color:#9a3412;font-size:12px;font-weight:900;">
+    製品紹介用デモです。画面操作は確認できますが、予約登録・変更・削除は実行されません。
+  </div>
+
 
   <div id="toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white text-sm font-bold px-4 py-3 rounded-xl shadow-lg"></div>
 
@@ -473,6 +477,9 @@
     let myReservations = [];
     let pendingReservationPayload = null;
 
+    const PAGE_PARAMS = new URLSearchParams(window.location.search);
+    const IS_EMBED_DEMO = PAGE_PARAMS.get("embed_demo") === "1";
+
     window.addEventListener("DOMContentLoaded", async () => {
       setupInitialDates();
       setupReservationSummaryEvents();
@@ -543,13 +550,56 @@
 
     async function initializeApp() {
       try {
+        if (IS_EMBED_DEMO) {
+          document.getElementById("embed-demo-banner").style.display = "block";
+          lineProfile = {
+            userId: "izakaya_embed_demo_user",
+            displayName: "デモ 太郎"
+          };
+
+          document.getElementById("profile-box").innerHTML = `
+            <div class="font-black">デモ 太郎</div>
+            <div class="text-[10px] text-orange-200">製品紹介デモ</div>
+          `;
+
+          hideAuthMessage();
+
+          await Promise.allSettled([
+            loadPublicStatus(),
+            loadPublicSettings()
+          ]);
+
+          renderReservationSlots();
+
+          customerInfo = {
+            display_name: "デモ 太郎",
+            customer_status: "regular"
+          };
+
+          myReservations = [{
+            id: "embed-demo-reservation",
+            reservation_name: "デモ 太郎",
+            reserve_date: getTodayDateString(),
+            reserve_time: "19:00:00",
+            party_size: 4,
+            seat_type: "table",
+            shift_code: "regular",
+            shift_label: "通常営業",
+            status: "confirmed"
+          }];
+
+          applyLastReservationName();
+          renderLiveReservationSummary();
+          renderMyReservations();
+          return;
+        }
+
         showAuthMessage("LINEログインを確認しています...");
 
         await initLiff();
         await loadLineProfile();
 
         hideAuthMessage();
-
         await reloadAll();
 
       } catch (err) {
@@ -1141,6 +1191,11 @@
     }
 
     async function submitReservationConfirmed() {
+      if (IS_EMBED_DEMO) {
+        alert("これは製品紹介用デモです。予約リクエストは送信されません。");
+        return;
+      }
+
       try {
         const idToken = getIdTokenOrRefresh();
 
@@ -1372,6 +1427,11 @@
     }
 
     async function cancelReservation(reservationId) {
+      if (IS_EMBED_DEMO) {
+        alert("これは製品紹介用デモです。予約キャンセルは実行されません。");
+        return;
+      }
+
       const reason = prompt("キャンセル理由を入力してください。", "顧客都合");
 
       if (reason === null) return;
@@ -1442,6 +1502,11 @@
     }
 
     async function submitChangeReservation() {
+      if (IS_EMBED_DEMO) {
+        alert("これは製品紹介用デモです。予約変更は実行されません。");
+        return;
+      }
+
       try {
         const idToken = getIdTokenOrRefresh();
 
