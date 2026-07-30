@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#431407">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<link rel="canonical" href="https://dpro-shop.com/systems/izakaya">
+<title>DPRO 居酒屋 LINE｜公開操作デモ・画面一覧</title>
+<style>
+:root{--bg:#f7f2ed;--card:#fff;--text:#241b16;--muted:#73665d;--line:#eadfd7;--brand:#9a3412;--brand2:#c2410c;--dark:#431407;--soft:#fff7ed;--warn:#fff5d8;--shadow:0 16px 42px rgba(67,20,7,.10)}
+*{box-sizing:border-box}
+html{background:var(--bg);scroll-behavior:smooth}
+body{margin:0;min-height:100vh;color:var(--text);background:radial-gradient(circle at 8% 0,rgba(234,88,12,.13),transparent 31%),radial-gradient(circle at 96% 10%,rgba(245,158,11,.12),transparent 27%),var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;line-height:1.65}
+a{color:inherit}.page{width:min(1120px,calc(100% - 24px));margin:0 auto;padding:20px 0 46px}
+.hero{position:relative;overflow:hidden;padding:34px;color:#fff;border-radius:27px;background:radial-gradient(circle at 88% 15%,rgba(245,158,11,.26),transparent 30%),linear-gradient(135deg,#292524,#431407 58%,#9a3412);box-shadow:0 22px 55px rgba(67,20,7,.24)}
+.hero:after{content:"";position:absolute;width:270px;height:270px;right:-90px;bottom:-145px;border-radius:50%;background:rgba(255,255,255,.07)}
+.kicker{font-size:11px;font-weight:1000;letter-spacing:.14em;opacity:.9}
+.hero h1{position:relative;z-index:1;margin:10px 0 0;font-size:clamp(28px,5vw,49px);line-height:1.24}
+.hero p{position:relative;z-index:1;max-width:830px;margin:13px 0 0;font-size:14px;opacity:.92}
+.hero-actions{position:relative;z-index:1;display:flex;gap:9px;flex-wrap:wrap;margin-top:20px}
+.button{min-height:45px;display:inline-flex;align-items:center;justify-content:center;padding:9px 15px;border-radius:999px;text-decoration:none;font-size:12px;font-weight:950}
+.button-light{color:var(--brand);background:#fff}.button-ghost{color:#fff;border:1px solid rgba(255,255,255,.34);background:rgba(255,255,255,.09)}
+.notice{margin-top:15px;padding:15px 17px;border:1px solid #e9cf84;border-radius:15px;background:var(--warn);color:#704a09;font-size:12px;font-weight:760}
+.demo-info{margin-top:16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.demo-info>div{padding:14px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.96);box-shadow:var(--shadow)}
+.demo-info small{display:block;color:var(--brand2);font-size:9px;font-weight:1000;letter-spacing:.08em}.demo-info strong{display:block;margin-top:4px;font-size:14px}
+.section-head{margin:32px 0 15px}.section-head small{color:var(--brand2);font-size:10px;font-weight:1000;letter-spacing:.12em}.section-head h2{margin:5px 0 0;font-size:clamp(23px,4vw,34px)}.section-head p{max-width:830px;margin:7px 0 0;color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.card{min-width:0;padding:20px;border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,.98);box-shadow:var(--shadow)}
+.card-number{color:var(--brand2);font-size:10px;font-weight:1000;letter-spacing:.1em}.card h3{margin:7px 0 0;font-size:21px;line-height:1.4}.card p{margin:8px 0 0;color:var(--muted);font-size:12px}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.pills span{padding:5px 8px;border-radius:999px;background:var(--soft);color:var(--brand);font-size:9px;font-weight:900}
+.card-note{margin-top:13px;padding:11px;border-radius:12px;background:#faf6f3;color:#66574e;font-size:11px}.card-note b{color:var(--brand)}
+.card-actions{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:15px}
+.open,.official{min-height:44px;display:flex;align-items:center;justify-content:center;padding:9px 13px;border-radius:12px;text-decoration:none;font-size:10px;font-weight:950}
+.open{color:#fff;background:linear-gradient(135deg,var(--dark),var(--brand))}.official{color:var(--brand);border:1px solid var(--line);background:var(--soft)}
+.scope{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px}.scope>div{padding:18px;border:1px solid var(--line);border-radius:17px;background:#fff;box-shadow:var(--shadow)}
+.scope small{font-size:9px;font-weight:1000;letter-spacing:.1em}.scope h3{margin:5px 0 0;font-size:17px}.scope ul{margin:10px 0 0;padding-left:18px;color:var(--muted);font-size:12px}.scope .included small{color:#166534}.scope .excluded small{color:#9a3412}
+.flow{margin-top:14px;padding:19px;border:1px solid var(--line);border-radius:19px;background:#fff;box-shadow:var(--shadow)}.flow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.flow-step{padding:12px;border-radius:12px;background:#faf5f1}.flow-step b{display:block;color:var(--brand2);font-size:10px}.flow-step strong{display:block;margin-top:4px;font-size:11px}
+.footer{margin-top:26px;color:#82746a;font-size:10px;text-align:center}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.demo-info,.scope,.flow-grid{grid-template-columns:1fr}}
+@media(max-width:420px){.page{width:min(100% - 16px,1120px)}.card-actions{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="page">
+<section class="hero">
+  <div class="kicker">PUBLIC OPERATION DEMO</div>
+  <h1>DPRO 居酒屋 LINE<br>公開操作デモ・画面一覧</h1>
+  <p>LINE予約、管理PC、iPad営業ボードを、更新処理を停止した製品紹介用デモで確認できます。</p>
+  <div class="hero-actions">
+    <a class="button button-light" href="https://dpro-shop.com/systems/izakaya">公式の機能・料金説明を見る</a>
+    <a class="button button-ghost" href="index.html?embed_demo=1">LINE予約から確認する</a>
+  </div>
+</section>
+
+<div class="notice">公開デモでは、予約登録・変更・キャンセル、店舗状況、予約状態、通知、営業日設定などの更新処理は実行されません。実在する氏名・アレルギー情報・来店情報は入力しないでください。</div>
+
+<section class="demo-info">
+  <div><small>SAFE DEMO MODE</small><strong>更新処理を停止した閲覧・操作確認用モード</strong></div>
+  <div><small>AUTO LOGIN</small><strong>管理PC・iPadは公開デモ時に自動表示</strong></div>
+  <div><small>OFFICIAL SCOPE</small><strong>予約・空席・来店準備・LINE通知の管理</strong></div>
+</section>
+
+<div class="section-head"><small>CHOOSE A SCREEN</small><h2>確認する画面を選択</h2><p>お客様の予約リクエスト、店舗の予約確認、営業中のiPad確認を順番に体験すると、システム全体の流れが分かります。</p></div>
+
+<section class="grid">
+  <article class="card">
+    <div class="card-number">01 / LINE RESERVATION</div>
+    <h3>お客様用<br>予約・変更・キャンセル</h3>
+    <p>営業日を反映した枠から、日時、人数、席希望、誕生日、子連れ、アレルギー、メモを入力します。</p>
+    <div class="pills"><span>仮予約</span><span>席・要望</span><span>自分の予約</span></div>
+    <div class="card-note"><b>安全設定：</b>公開デモでは送信・変更・キャンセルは実行されません。</div>
+    <div class="card-actions"><a class="open" href="index.html?embed_demo=1">LINE予約を開く</a><a class="official" href="https://dpro-shop.com/systems/izakaya#flow">説明</a></div>
+  </article>
+
+  <article class="card">
+    <div class="card-number">02 / OWNER PC</div>
+    <h3>オーナー管理PC<br>予約・通知・営業日</h3>
+    <p>今日の営業、仮予約、優先確認、来店準備、予約一覧、LINE通知、定休日・特別営業日を確認します。</p>
+    <div class="pills"><span>予約確定</span><span>LINE通知</span><span>店舗設定</span></div>
+    <div class="card-note"><b>公開デモ：</b>自動表示されます。営業前DEMO準備は公開画面では非表示です。</div>
+    <div class="card-actions"><a class="open" href="admin.html?embed_demo=1">管理PCを開く</a><a class="official" href="https://dpro-shop.com/systems/izakaya#roles">説明</a></div>
+  </article>
+
+  <article class="card">
+    <div class="card-number">03 / SERVICE IPAD</div>
+    <h3>営業iPad<br>空席・仮予約・来店準備</h3>
+    <p>空席あり、残りわずか、満席、本日終了、仮予約、来店準備、通知、履歴を大きなボタンで確認します。</p>
+    <div class="pills"><span>店舗状況</span><span>来店準備</span><span>通知・履歴</span></div>
+    <div class="card-note"><b>公開デモ：</b>管理PCへ戻る場合も安全なデモモードを維持します。</div>
+    <div class="card-actions"><a class="open" href="owner-ipad.html?embed_demo=1">iPad営業ボードを開く</a><a class="official" href="https://dpro-shop.com/systems/izakaya#demo">説明</a></div>
+  </article>
+</section>
+
+<div class="section-head"><small>SYSTEM SCOPE</small><h2>標準対応範囲</h2></div>
+<section class="scope">
+  <div class="included"><small>INCLUDED</small><h3>このシステムで確認できるもの</h3><ul><li>LINE予約・変更・キャンセル</li><li>空席状況・予約確定</li><li>来店準備・顧客メモ</li><li>LINE通知・前日リマインド</li><li>定休日・特別営業日の設定</li></ul></div>
+  <div class="excluded"><small>NOT INCLUDED</small><h3>標準機能に含まれないもの</h3><ul><li>モバイルオーダー・店内注文</li><li>厨房伝票</li><li>POS・会計・決済</li><li>在庫・原価管理</li><li>デリバリー連携</li></ul></div>
+</section>
+
+<div class="section-head"><small>RECOMMENDED JOURNEY</small><h2>おすすめの確認順</h2></div>
+<section class="flow"><div class="flow-grid">
+  <div class="flow-step"><b>01</b><strong>LINE予約で入力項目を確認</strong></div>
+  <div class="flow-step"><b>02</b><strong>PCで予約・通知・営業日を確認</strong></div>
+  <div class="flow-step"><b>03</b><strong>iPadで当日の営業画面を確認</strong></div>
+</div></section>
+
+<div class="footer">DPRO 居酒屋 LINE｜PUBLIC OPERATION DEMO</div>
+</main>
+</body>
+</html>
