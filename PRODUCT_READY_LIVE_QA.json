@@ -1,0 +1,71 @@
+{
+  "systemCode": "IZAKAYA",
+  "scope": "#14 only",
+  "sourceHead": "9784f78ef6cf0284aca275f6474cb7007e55b592",
+  "workerVersion": "IZAKAYA-PR1-20260823",
+  "databaseVersion": "IZAKAYA-DB-PR1-20260823",
+  "frontendVersion": "IZAKAYA-PR1-20260823",
+  "systemCheckOk": true,
+  "blockingFailCount": 0,
+  "productionGuard": true,
+  "dbOk": true,
+  "versionsAligned": true,
+  "browserQA": [
+    {
+      "name": "pc-admin",
+      "path": "/admin.html?embed_demo=1",
+      "width": 1440,
+      "height": 1000,
+      "title": "居酒屋DPRO 管理画面｜公開操作デモ",
+      "bodyWidth": 1440,
+      "viewportWidth": 1440,
+      "productIdentity": true,
+      "ok": true
+    },
+    {
+      "name": "mobile390-customer",
+      "path": "/index.html?embed_demo=1",
+      "width": 390,
+      "height": 844,
+      "title": "居酒屋DPRO 予約｜公開操作デモ",
+      "bodyWidth": 390,
+      "viewportWidth": 390,
+      "productIdentity": true,
+      "ok": true
+    },
+    {
+      "name": "mobile320-customer",
+      "path": "/index.html?embed_demo=1",
+      "width": 320,
+      "height": 720,
+      "title": "居酒屋DPRO 予約｜公開操作デモ",
+      "bodyWidth": 320,
+      "viewportWidth": 320,
+      "productIdentity": true,
+      "ok": true
+    },
+    {
+      "name": "ipad-owner",
+      "path": "/owner-ipad.html?embed_demo=1",
+      "width": 1024,
+      "height": 1366,
+      "title": "居酒屋DPRO iPad営業ボード｜公開操作デモ",
+      "bodyWidth": 1024,
+      "viewportWidth": 1024,
+      "productIdentity": true,
+      "ok": true
+    },
+    {
+      "name": "demo-mutation-guard",
+      "ok": true,
+      "status": 403
+    }
+  ],
+  "publicURLs": {
+    "demo": "https://izakaya-liff-demo.pages.dev/owner-ipad.html?embed_demo=1",
+    "product": "https://dpromstk2000-lab.github.io/dpro-line-systems-site/systems/izakaya.html",
+    "official": "https://dpro-shop.com/systems/izakaya"
+  },
+  "checkedAt": "2026-08-23T02:27:46.343208+00:00",
+  "standardChanged": false
+}
