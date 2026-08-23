@@ -1,0 +1,10 @@
+{
+  "systemCode": "IZAKAYA",
+  "adapterVersion": "DPRO-CONTROL-ADAPTER-1.0",
+  "workerVersion": "IZAKAYA-PR1-20260823",
+  "databaseVersion": "IZAKAYA-DB-PR1-20260823",
+  "frontendVersion": "IZAKAYA-PR1-20260823",
+  "releaseDate": "2026-08-23",
+  "scope": "product-ready-14-izakaya",
+  "standardChanged": false
+}
