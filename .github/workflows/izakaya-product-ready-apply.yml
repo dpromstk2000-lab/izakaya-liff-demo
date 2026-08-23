@@ -1,0 +1,247 @@
+name: IZAKAYA Product READY Apply + Live Gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/izakaya-product-ready-apply.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: izakaya-product-ready-14
+  cancel-in-progress: false
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard source HEAD
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          CURRENT="$(git rev-parse HEAD)"
+          REMOTE="$(git rev-parse origin/main)"
+          if [ "$CURRENT" != "$REMOTE" ]; then
+            echo "main advanced after workflow started; refusing to overwrite."
+            exit 1
+          fi
+
+      - name: Apply #14 IZAKAYA Product READY Priority A only
+        shell: python
+        env:
+          B64_RELEASE: "ewogICJzeXN0ZW1Db2RlIjogIklaQUtBWUEiLAogICJhZGFwdGVyVmVyc2lvbiI6ICJEUFJPLUNPTlRST0wtQURBUFRFUi0xLjAiLAogICJ3b3JrZXJWZXJzaW9uIjogIklaQUtBWUEtUFIxLTIwMjYwODIzIiwKICAiZGF0YWJhc2VWZXJzaW9uIjogIklaQUtBWUEtREItUFIxLTIwMjYwODIzIiwKICAiZnJvbnRlbmRWZXJzaW9uIjogIklaQUtBWUEtUFIxLTIwMjYwODIzIiwKICAicmVsZWFzZURhdGUiOiAiMjAyNi0wOC0yMyIsCiAgInNjb3BlIjogInByb2R1Y3QtcmVhZHktMTQtaXpha2F5YSIsCiAgInN0YW5kYXJkQ2hhbmdlZCI6IGZhbHNlCn0K"
+          B64_SHARED: "Y29uc3QgREVNT19TSE9QX0lEID0gIjExMTExMTExLTExMTEtMTExMS0xMTExLTExMTExMTExMTExMSI7CgpleHBvcnQgY29uc3QgRFBST19SRUFEWSA9IE9iamVjdC5mcmVlemUoewogIHN5c3RlbUNvZGU6ICJJWkFLQVlBIiwKICBhZGFwdGVyVmVyc2lvbjogIkRQUk8tQ09OVFJPTC1BREFQVEVSLTEuMCIsCiAgd29ya2VyVmVyc2lvbjogIklaQUtBWUEtUFIxLTIwMjYwODIzIiwKICBkYXRhYmFzZVZlcnNpb246ICJJWkFLQVlBLURCLVBSMS0yMDI2MDgyMyIsCiAgZnJvbnRlbmRWZXJzaW9uOiAiSVpBS0FZQS1QUjEtMjAyNjA4MjMiLAogIGRlbW9TaG9wSWQ6IERFTU9fU0hPUF9JRCwKfSk7CgpmdW5jdGlvbiBqc29uSGVhZGVycyhleHRyYSA9IHt9KSB7CiAgcmV0dXJuIHsKICAgICJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbjsgY2hhcnNldD11dGYtOCIsCiAgICAiQ2FjaGUtQ29udHJvbCI6ICJuby1zdG9yZSwgbWF4LWFnZT0wIiwKICAgICJYLUNvbnRlbnQtVHlwZS1PcHRpb25zIjogIm5vc25pZmYiLAogICAgLi4uZXh0cmEsCiAgfTsKfQoKZXhwb3J0IGZ1bmN0aW9uIGpzb25SZXNwb25zZShkYXRhLCBzdGF0dXMgPSAyMDAsIGV4dHJhSGVhZGVycyA9IHt9KSB7CiAgcmV0dXJuIG5ldyBSZXNwb25zZShKU09OLnN0cmluZ2lmeShkYXRhLCBudWxsLCAyKSwgewogICAgc3RhdHVzLAogICAgaGVhZGVyczoganNvbkhlYWRlcnMoZXh0cmFIZWFkZXJzKSwKICB9KTsKfQoKZnVuY3Rpb24gbm9ybWFsaXplRW52aXJvbm1lbnQodmFsdWUpIHsKICBjb25zdCB2ID0gU3RyaW5nKHZhbHVlIHx8ICJkZW1vIikudHJpbSgpLnRvTG93ZXJDYXNlKCk7CiAgaWYgKHYgPT09ICJwcm9kIikgcmV0dXJuICJwcm9kdWN0aW9uIjsKICBpZiAodiA9PT0gInByb2R1Y3Rpb24iKSByZXR1cm4gInByb2R1Y3Rpb24iOwogIGlmICh2ID09PSAic3RhZ2luZyIpIHJldHVybiAic3RhZ2luZyI7CiAgaWYgKHYgPT09ICJ0ZXN0IikgcmV0dXJuICJ0ZXN0IjsKICByZXR1cm4gImRlbW8iOwp9CgpmdW5jdGlvbiBub3JtYWxpemVGYWNpbGl0eUNvZGUodmFsdWUpIHsKICByZXR1cm4gU3RyaW5nKHZhbHVlIHx8ICIiKS50cmltKCkudG9VcHBlckNhc2UoKTsKfQoKZXhwb3J0IGZ1bmN0aW9uIGdldFJ1bnRpbWVJZGVudGl0eShlbnYpIHsKICBjb25zdCBlbnZpcm9ubWVudCA9IG5vcm1hbGl6ZUVudmlyb25tZW50KGVudi5EUFJPX0VOVklST05NRU5UKTsKICBjb25zdCBmYWNpbGl0eUNvZGUgPSBub3JtYWxpemVGYWNpbGl0eUNvZGUoZW52LkRQUk9fRkFDSUxJVFlfQ09ERSkgfHwKICAgIChlbnZpcm9ubWVudCA9PT0gImRlbW8iID8gIklaQUtBWUEtREVNTyIgOiAiIik7CgogIGNvbnN0IHByb2R1Y3Rpb25HdWFyZCA9CiAgICBlbnZpcm9ubWVudCAhPT0gInByb2R1Y3Rpb24iIHx8CiAgICAoCiAgICAgIGZhY2lsaXR5Q29kZS5sZW5ndGggPiAwICYmCiAgICAgICFmYWNpbGl0eUNvZGUuaW5jbHVkZXMoIkRFTU8iKSAmJgogICAgICBTdHJpbmcoZW52LkRQUk9fU0hPUF9JRCB8fCAiIikudHJpbSgpLmxlbmd0aCA+IDAgJiYKICAgICAgU3RyaW5nKGVudi5EUFJPX1NIT1BfSUQgfHwgIiIpLnRyaW0oKSAhPT0gREVNT19TSE9QX0lECiAgICApOwoKICByZXR1cm4gewogICAgZW52aXJvbm1lbnQsCiAgICBmYWNpbGl0eUNvZGUsCiAgICBwcm9kdWN0aW9uR3VhcmQsCiAgfTsKfQoKZnVuY3Rpb24gcmVxdWlyZUVudihlbnYsIGtleSkgewogIGNvbnN0IHZhbHVlID0gZW52W2tleV07CiAgaWYgKCF2YWx1ZSkgdGhyb3cgbmV3IEVycm9yKGByZXF1aXJlZCBlbnZpcm9ubWVudCB2YXJpYWJsZSBpcyBtaXNzaW5nOiAke2tleX1gKTsKICByZXR1cm4gdmFsdWU7Cn0KCmFzeW5jIGZ1bmN0aW9uIHN1cGFiYXNlRmV0Y2goZW52LCBwYXRoKSB7CiAgY29uc3Qgc3VwYWJhc2VVcmwgPSByZXF1aXJlRW52KGVudiwgIlNVUEFCQVNFX1VSTCIpOwogIGNvbnN0IHNlcnZpY2VLZXkgPSByZXF1aXJlRW52KGVudiwgIlNVUEFCQVNFX1NFUlZJQ0VfUk9MRV9LRVkiKTsKCiAgY29uc3QgcmVzcG9uc2UgPSBhd2FpdCBmZXRjaChgJHtzdXBhYmFzZVVybH0ke3BhdGh9YCwgewogICAgaGVhZGVyczogewogICAgICBhcGlrZXk6IHNlcnZpY2VLZXksCiAgICAgIEF1dGhvcml6YXRpb246IGBCZWFyZXIgJHtzZXJ2aWNlS2V5fWAsCiAgICAgICJDb250ZW50LVR5cGUiOiAiYXBwbGljYXRpb24vanNvbiIsCiAgICB9LAogIH0pOwoKICBjb25zdCB0ZXh0ID0gYXdhaXQgcmVzcG9uc2UudGV4dCgpOwogIGxldCBkYXRhID0gbnVsbDsKICBpZiAodGV4dCkgewogICAgdHJ5IHsgZGF0YSA9IEpTT04ucGFyc2UodGV4dCk7IH0gY2F0Y2ggeyBkYXRhID0gdGV4dDsgfQogIH0KCiAgaWYgKCFyZXNwb25zZS5vaykgewogICAgY29uc3QgbWVzc2FnZSA9CiAgICAgIGRhdGE/Lm1lc3NhZ2UgfHwgZGF0YT8uaGludCB8fCBkYXRhPy5kZXRhaWxzIHx8CiAgICAgIGBkYXRhYmFzZSByZXF1ZXN0IGZhaWxlZDogJHtyZXNwb25zZS5zdGF0dXN9YDsKICAgIHRocm93IG5ldyBFcnJvcihtZXNzYWdlKTsKICB9CiAgcmV0dXJuIGRhdGE7Cn0KCmFzeW5jIGZ1bmN0aW9uIGdldERhdGFiYXNlVmVyc2lvbihlbnYpIHsKICBjb25zdCByb3dzID0gYXdhaXQgc3VwYWJhc2VGZXRjaCgKICAgIGVudiwKICAgIGAvcmVzdC92MS9pel9kZW1vX3NjaGVtYV92ZXJzaW9ucz9zZWxlY3Q9dmVyc2lvbl9jb2RlLGFwcGxpZWRfYXQmb3JkZXI9YXBwbGllZF9hdC5kZXNjJmxpbWl0PTFgCiAgKTsKICByZXR1cm4gcm93cz8uWzBdPy52ZXJzaW9uX2NvZGUgfHwgbnVsbDsKfQoKYXN5bmMgZnVuY3Rpb24gZ2V0RGVtb1Nob3AoZW52KSB7CiAgY29uc3Qgcm93cyA9IGF3YWl0IHN1cGFiYXNlRmV0Y2goCiAgICBlbnYsCiAgICBgL3Jlc3QvdjEvaXpfZGVtb19zaG9wcz9pZD1lcS4ke0RFTU9fU0hPUF9JRH0mc2VsZWN0PWlkLG5hbWUsZGVtb19rZXksdGltZXpvbmUmbGltaXQ9MWAKICApOwogIHJldHVybiByb3dzPy5bMF0gfHwgbnVsbDsKfQoKYXN5bmMgZnVuY3Rpb24gZ2V0SW50ZXJ2YWxFdmlkZW5jZShlbnYpIHsKICBjb25zdCBlbmRwb2ludHMgPSBbCiAgICBbImJ1c2luZXNzX2hvdXJzIiwgIi9yZXN0L3YxL2l6X2RlbW9fYnVzaW5lc3NfaG91cnM/c2VsZWN0PXNsb3RfaW50ZXJ2YWxfbWludXRlcyxpc19jbG9zZWQiXSwKICAgIFsiYnVzaW5lc3Nfc2hpZnRzIiwgIi9yZXN0L3YxL2l6X2RlbW9fYnVzaW5lc3Nfc2hpZnRzP3NlbGVjdD1zbG90X2ludGVydmFsX21pbnV0ZXMsaXNfZW5hYmxlZCJdLAogICAgWyJzcGVjaWFsX2RheXMiLCAiL3Jlc3QvdjEvaXpfZGVtb19zcGVjaWFsX2RheXM/c2VsZWN0PXNsb3RfaW50ZXJ2YWxfbWludXRlcyxpc19jbG9zZWQiXSwKICAgIFsic3BlY2lhbF9kYXlfc2hpZnRzIiwgIi9yZXN0L3YxL2l6X2RlbW9fc3BlY2lhbF9kYXlfc2hpZnRzP3NlbGVjdD1zbG90X2ludGVydmFsX21pbnV0ZXMsaXNfZW5hYmxlZCJdLAogIF07CgogIGNvbnN0IHJlc3VsdCA9IHt9OwogIGxldCB2aW9sYXRpb25Db3VudCA9IDA7CgogIGZvciAoY29uc3QgW25hbWUsIHBhdGhdIG9mIGVuZHBvaW50cykgewogICAgY29uc3Qgcm93cyA9IGF3YWl0IHN1cGFiYXNlRmV0Y2goZW52LCBwYXRoKTsKICAgIGxldCBjaGVja2VkID0gMDsKICAgIGxldCB2aW9sYXRpb25zID0gMDsKCiAgICBmb3IgKGNvbnN0IHJvdyBvZiByb3dzIHx8IFtdKSB7CiAgICAgIGNvbnN0IGRpc2FibGVkID0KICAgICAgICByb3cuaXNfY2xvc2VkID09PSB0cnVlIHx8CiAgICAgICAgcm93LmlzX2VuYWJsZWQgPT09IGZhbHNlOwogICAgICBpZiAoZGlzYWJsZWQgJiYgcm93LnNsb3RfaW50ZXJ2YWxfbWludXRlcyA9PSBudWxsKSBjb250aW51ZTsKICAgICAgY2hlY2tlZCArPSAxOwogICAgICBpZiAoTnVtYmVyKHJvdy5zbG90X2ludGVydmFsX21pbnV0ZXMpICE9PSAzMCkgdmlvbGF0aW9ucyArPSAxOwogICAgfQoKICAgIHJlc3VsdFtuYW1lXSA9IHsgY2hlY2tlZCwgdmlvbGF0aW9ucyB9OwogICAgdmlvbGF0aW9uQ291bnQgKz0gdmlvbGF0aW9uczsKICB9CgogIHJldHVybiB7IGdyb3VwczogcmVzdWx0LCB2aW9sYXRpb25Db3VudCB9Owp9CgpmdW5jdGlvbiBwdWJsaWNDaGVjayhpZCwgb2ssIGRldGFpbCkgewogIHJldHVybiB7IGlkLCBvazogQm9vbGVhbihvayksIGRldGFpbCB9Owp9CgpleHBvcnQgYXN5bmMgZnVuY3Rpb24gYnVpbGRTeXN0ZW1DaGVjayhlbnYpIHsKICBjb25zdCBpZGVudGl0eSA9IGdldFJ1bnRpbWVJZGVudGl0eShlbnYpOwogIGNvbnN0IGNoZWNrcyA9IFtdOwogIGxldCBkYk9rID0gZmFsc2U7CiAgbGV0IGRhdGFiYXNlVmVyc2lvbiA9IG51bGw7CiAgbGV0IGludGVydmFsRXZpZGVuY2UgPSBudWxsOwogIGxldCBzaG9wID0gbnVsbDsKCiAgdHJ5IHsKICAgIFtkYXRhYmFzZVZlcnNpb24sIGludGVydmFsRXZpZGVuY2UsIHNob3BdID0gYXdhaXQgUHJvbWlzZS5hbGwoWwogICAgICBnZXREYXRhYmFzZVZlcnNpb24oZW52KSwKICAgICAgZ2V0SW50ZXJ2YWxFdmlkZW5jZShlbnYpLAogICAgICBnZXREZW1vU2hvcChlbnYpLAogICAgXSk7CiAgICBkYk9rID0gdHJ1ZTsKICB9IGNhdGNoIChlcnJvcikgewogICAgY2hlY2tzLnB1c2gocHVibGljQ2hlY2soImRhdGFiYXNlX2Nvbm5lY3Rpb24iLCBmYWxzZSwgU3RyaW5nKGVycm9yPy5tZXNzYWdlIHx8ICJkYXRhYmFzZSBjaGVjayBmYWlsZWQiKSkpOwogIH0KCiAgaWYgKGRiT2spIHsKICAgIGNoZWNrcy5wdXNoKHB1YmxpY0NoZWNrKCJkYXRhYmFzZV9jb25uZWN0aW9uIiwgdHJ1ZSwgIlN1cGFiYXNlIGNvbm5lY3Rpb24gT0siKSk7CiAgICBjaGVja3MucHVzaChwdWJsaWNDaGVjaygKICAgICAgImRhdGFiYXNlX3ZlcnNpb24iLAogICAgICBkYXRhYmFzZVZlcnNpb24gPT09IERQUk9fUkVBRFkuZGF0YWJhc2VWZXJzaW9uLAogICAgICBkYXRhYmFzZVZlcnNpb24gfHwgImRhdGFiYXNlIHZlcnNpb24gdW5hdmFpbGFibGUiCiAgICApKTsKICAgIGNoZWNrcy5wdXNoKHB1YmxpY0NoZWNrKAogICAgICAicmVzZXJ2YXRpb25fMzBtaW5fZ3VhcmQiLAogICAgICBpbnRlcnZhbEV2aWRlbmNlPy52aW9sYXRpb25Db3VudCA9PT0gMCwKICAgICAgYHZpb2xhdGlvbnM9JHtpbnRlcnZhbEV2aWRlbmNlPy52aW9sYXRpb25Db3VudCA/PyAidW5rbm93biJ9YAogICAgKSk7CiAgICBjaGVja3MucHVzaChwdWJsaWNDaGVjaygKICAgICAgImRlbW9fc2hvcF9ib3VuZGFyeSIsCiAgICAgIEJvb2xlYW4oc2hvcD8uaWQgPT09IERFTU9fU0hPUF9JRCksCiAgICAgIHNob3A/LmlkID8gImZpeGVkIGRlbW8gc2hvcCByZXNvbHZlZCIgOiAiZGVtbyBzaG9wIG5vdCByZXNvbHZlZCIKICAgICkpOwogIH0KCiAgY2hlY2tzLnB1c2gocHVibGljQ2hlY2soCiAgICAicHJvZHVjdGlvbl9ndWFyZCIsCiAgICBpZGVudGl0eS5wcm9kdWN0aW9uR3VhcmQsCiAgICBpZGVudGl0eS5wcm9kdWN0aW9uR3VhcmQKICAgICAgPyBgc2FmZSBmb3IgZW52aXJvbm1lbnQ9JHtpZGVudGl0eS5lbnZpcm9ubWVudH1gCiAgICAgIDogInByb2R1Y3Rpb24gY29uZmlndXJhdGlvbiBzdGlsbCBwb2ludHMgYXQgZGVtby9maXhlZC1zaG9wIHNldHRpbmdzIgogICkpOwoKICBjaGVja3MucHVzaChwdWJsaWNDaGVjaygKICAgICJ2ZXJzaW9ucyIsCiAgICBkYXRhYmFzZVZlcnNpb24gPT09IERQUk9fUkVBRFkuZGF0YWJhc2VWZXJzaW9uLAogICAgYHdvcmtlcj0ke0RQUk9fUkVBRFkud29ya2VyVmVyc2lvbn07IGRhdGFiYXNlPSR7ZGF0YWJhc2VWZXJzaW9uIHx8ICJ1bmtub3duIn07IGZyb250ZW5kPSR7RFBST19SRUFEWS5mcm9udGVuZFZlcnNpb259YAogICkpOwoKICBjb25zdCBibG9ja2luZ0ZhaWxDb3VudCA9IGNoZWNrcy5maWx0ZXIoKGl0ZW0pID0+ICFpdGVtLm9rKS5sZW5ndGg7CiAgY29uc3QgdmVyc2lvbnNBbGlnbmVkID0KICAgIGRhdGFiYXNlVmVyc2lvbiA9PT0gRFBST19SRUFEWS5kYXRhYmFzZVZlcnNpb24gJiYKICAgIERQUk9fUkVBRFkud29ya2VyVmVyc2lvbiA9PT0gRFBST19SRUFEWS5mcm9udGVuZFZlcnNpb247CgogIHJldHVybiB7CiAgICBvazogYmxvY2tpbmdGYWlsQ291bnQgPT09IDAsCiAgICBzeXN0ZW1Db2RlOiBEUFJPX1JFQURZLnN5c3RlbUNvZGUsCiAgICBzdGF0dXM6IGJsb2NraW5nRmFpbENvdW50ID09PSAwID8gInJlYWR5IiA6ICJibG9ja2VkIiwKICAgIHZlcnNpb246IERQUk9fUkVBRFkud29ya2VyVmVyc2lvbiwKICAgIHdvcmtlclZlcnNpb246IERQUk9fUkVBRFkud29ya2VyVmVyc2lvbiwKICAgIGRhdGFiYXNlVmVyc2lvbjogZGF0YWJhc2VWZXJzaW9uIHx8ICJ1bmtub3duIiwKICAgIGZyb250ZW5kVmVyc2lvbjogRFBST19SRUFEWS5mcm9udGVuZFZlcnNpb24sCiAgICBhZGFwdGVyVmVyc2lvbjogRFBST19SRUFEWS5hZGFwdGVyVmVyc2lvbiwKICAgIGZhY2lsaXR5Q29kZTogaWRlbnRpdHkuZmFjaWxpdHlDb2RlLAogICAgZW52aXJvbm1lbnQ6IGlkZW50aXR5LmVudmlyb25tZW50LAogICAgcHJvZHVjdGlvbkd1YXJkOiBpZGVudGl0eS5wcm9kdWN0aW9uR3VhcmQsCiAgICBkYk9rLAogICAgdmVyc2lvbnNBbGlnbmVkLAogICAgYmxvY2tpbmdGYWlsQ291bnQsCiAgICBkZW1vUHJlcGFyZVBhdGg6ICIvYXBpL2FkbWluL2RlbW8tcmVzZXQiLAogICAgcmVsZWFzZU1hbmlmZXN0UGF0aDogIi9kcHJvLXJlbGVhc2UuanNvbiIsCiAgICBjaGVja3MsCiAgICBjaGVja2VkQXQ6IG5ldyBEYXRlKCkudG9JU09TdHJpbmcoKSwKICB9Owp9Cg=="
+          B64_MIDDLEWARE: "aW1wb3J0IHsgZ2V0UnVudGltZUlkZW50aXR5LCBqc29uUmVzcG9uc2UgfSBmcm9tICIuL19zaGFyZWQvZHByby1yZWFkeS5qcyI7CgpleHBvcnQgYXN5bmMgZnVuY3Rpb24gb25SZXF1ZXN0KGNvbnRleHQpIHsKICBjb25zdCB7IHJlcXVlc3QsIGVudiB9ID0gY29udGV4dDsKICBjb25zdCB1cmwgPSBuZXcgVVJMKHJlcXVlc3QudXJsKTsKCiAgaWYgKCF1cmwucGF0aG5hbWUuc3RhcnRzV2l0aCgiL2FwaS8iKSkgewogICAgcmV0dXJuIGNvbnRleHQubmV4dCgpOwogIH0KCiAgY29uc3QgbWV0aG9kID0gcmVxdWVzdC5tZXRob2QudG9VcHBlckNhc2UoKTsKICBjb25zdCBpc011dGF0aW9uID0gIVsiR0VUIiwgIkhFQUQiLCAiT1BUSU9OUyJdLmluY2x1ZGVzKG1ldGhvZCk7CiAgY29uc3QgaWRlbnRpdHkgPSBnZXRSdW50aW1lSWRlbnRpdHkoZW52KTsKCiAgaWYgKGlzTXV0YXRpb24gJiYgaWRlbnRpdHkuZW52aXJvbm1lbnQgPT09ICJwcm9kdWN0aW9uIiAmJiAhaWRlbnRpdHkucHJvZHVjdGlvbkd1YXJkKSB7CiAgICByZXR1cm4ganNvblJlc3BvbnNlKHsKICAgICAgb2s6IGZhbHNlLAogICAgICBlcnJvcjogIlBST0RVQ1RJT05fR1VBUkRfQkxPQ0tFRCIsCiAgICAgIG1lc3NhZ2U6ICLmnKznlarnkrDlooPjga7mlr3oqK3orZjliKXlrZDjgYxERU1PL+WbuuWumuioreWumuOBruOBn+OCgeabtOaWsOWHpueQhuOCkuWBnOatouOBl+OBvuOBl+OBn+OAgiIsCiAgICAgIHN5c3RlbUNvZGU6ICJJWkFLQVlBIiwKICAgICAgZW52aXJvbm1lbnQ6IGlkZW50aXR5LmVudmlyb25tZW50LAogICAgICBwcm9kdWN0aW9uR3VhcmQ6IGZhbHNlLAogICAgfSwgNTAzKTsKICB9CgogIHJldHVybiBjb250ZXh0Lm5leHQoKTsKfQo="
+          B64_HEALTH: "aW1wb3J0IHsgYnVpbGRTeXN0ZW1DaGVjaywganNvblJlc3BvbnNlIH0gZnJvbSAiLi4vX3NoYXJlZC9kcHJvLXJlYWR5LmpzIjsKCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBvblJlcXVlc3RHZXQoY29udGV4dCkgewogIGNvbnN0IGNoZWNrID0gYXdhaXQgYnVpbGRTeXN0ZW1DaGVjayhjb250ZXh0LmVudik7CiAgcmV0dXJuIGpzb25SZXNwb25zZSh7CiAgICBvazogY2hlY2sub2ssCiAgICBzeXN0ZW1Db2RlOiBjaGVjay5zeXN0ZW1Db2RlLAogICAgc2VydmljZTogIml6YWtheWEtcGFnZXMtZnVuY3Rpb25zIiwKICAgIHN0YXR1czogY2hlY2suc3RhdHVzLAogICAgdmVyc2lvbjogY2hlY2sud29ya2VyVmVyc2lvbiwKICAgIHdvcmtlclZlcnNpb246IGNoZWNrLndvcmtlclZlcnNpb24sCiAgICBkYXRhYmFzZVZlcnNpb246IGNoZWNrLmRhdGFiYXNlVmVyc2lvbiwKICAgIGZyb250ZW5kVmVyc2lvbjogY2hlY2suZnJvbnRlbmRWZXJzaW9uLAogICAgYWRhcHRlclZlcnNpb246IGNoZWNrLmFkYXB0ZXJWZXJzaW9uLAogICAgZmFjaWxpdHlDb2RlOiBjaGVjay5mYWNpbGl0eUNvZGUsCiAgICBlbnZpcm9ubWVudDogY2hlY2suZW52aXJvbm1lbnQsCiAgICBwcm9kdWN0aW9uR3VhcmQ6IGNoZWNrLnByb2R1Y3Rpb25HdWFyZCwKICAgIGRiT2s6IGNoZWNrLmRiT2ssCiAgICBibG9ja2luZ0ZhaWxDb3VudDogY2hlY2suYmxvY2tpbmdGYWlsQ291bnQsCiAgICB0aW1lOiBjaGVjay5jaGVja2VkQXQsCiAgfSwgY2hlY2sub2sgPyAyMDAgOiA1MDMpOwp9Cg=="
+          B64_SYSTEM_CHECK: "aW1wb3J0IHsgYnVpbGRTeXN0ZW1DaGVjaywganNvblJlc3BvbnNlIH0gZnJvbSAiLi4vX3NoYXJlZC9kcHJvLXJlYWR5LmpzIjsKCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBvblJlcXVlc3RHZXQoY29udGV4dCkgewogIGNvbnN0IGNoZWNrID0gYXdhaXQgYnVpbGRTeXN0ZW1DaGVjayhjb250ZXh0LmVudik7CiAgcmV0dXJuIGpzb25SZXNwb25zZShjaGVjaywgY2hlY2sub2sgPyAyMDAgOiA1MDMpOwp9Cg=="
+        run: |
+          from pathlib import Path
+          import os, base64
+          payloads = {
+            "dpro-release.json": os.environ["B64_RELEASE"],
+            "functions/_shared/dpro-ready.js": os.environ["B64_SHARED"],
+            "functions/_middleware.js": os.environ["B64_MIDDLEWARE"],
+            "functions/api/health.js": os.environ["B64_HEALTH"],
+            "functions/api/system-check.js": os.environ["B64_SYSTEM_CHECK"],
+          }
+          for rel, encoded in payloads.items():
+            p = Path(rel)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(base64.b64decode(encoded))
+          print("Applied files:")
+          for rel in payloads: print(rel)
+
+      - name: Source syntax QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check functions/_shared/dpro-ready.js
+          node --check functions/_middleware.js
+          node --check functions/api/health.js
+          node --check functions/api/system-check.js
+          python -m json.tool dpro-release.json >/dev/null
+
+      - name: Commit source patch
+        id: source_commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "dpro-product-ready-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add dpro-release.json functions/_shared/dpro-ready.js functions/_middleware.js functions/api/health.js functions/api/system-check.js
+          if git diff --cached --quiet; then
+            echo "No source changes required."
+          else
+            git commit -m "DPRO Product READY #14 IZAKAYA Priority A"
+            git push origin HEAD:main
+          fi
+          SOURCE_HEAD="$(git rev-parse HEAD)"
+          echo "source_head=$SOURCE_HEAD" >> "$GITHUB_OUTPUT"
+          echo "SOURCE_HEAD=$SOURCE_HEAD" >> "$GITHUB_ENV"
+
+      - name: Wait for Cloudflare Pages deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="IZAKAYA-PR1-20260823"
+          URL="https://izakaya-liff-demo.pages.dev/api/system-check"
+          for i in $(seq 1 72); do
+            code="$(curl -sS -o /tmp/system-check.json -w '%{http_code}' "$URL" || true)"
+            if [ "$code" = "200" ] && grep -q "\"workerVersion\": \"$EXPECTED\"" /tmp/system-check.json; then
+              cat /tmp/system-check.json
+              exit 0
+            fi
+            echo "waiting for Pages deploy: attempt=$i http=$code"
+            sleep 10
+          done
+          cat /tmp/system-check.json || true
+          exit 1
+
+      - name: Runtime contract QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS https://izakaya-liff-demo.pages.dev/api/health > /tmp/health.json
+          curl -fsS https://izakaya-liff-demo.pages.dev/api/system-check > /tmp/system-check.json
+          curl -fsS https://izakaya-liff-demo.pages.dev/dpro-release.json > /tmp/release.json
+          python - <<'PY'
+          import json
+          h=json.load(open('/tmp/health.json'))
+          c=json.load(open('/tmp/system-check.json'))
+          r=json.load(open('/tmp/release.json'))
+          assert h.get('ok') is True, h
+          assert c.get('ok') is True, c
+          assert c.get('systemCode') == 'IZAKAYA', c
+          assert c.get('blockingFailCount') == 0, c
+          assert c.get('productionGuard') is True, c
+          assert c.get('dbOk') is True, c
+          assert c.get('versionsAligned') is True, c
+          assert c.get('workerVersion') == 'IZAKAYA-PR1-20260823', c
+          assert c.get('databaseVersion') == 'IZAKAYA-DB-PR1-20260823', c
+          assert c.get('frontendVersion') == 'IZAKAYA-PR1-20260823', c
+          assert r.get('workerVersion') == c.get('workerVersion'), (r,c)
+          assert r.get('databaseVersion') == c.get('databaseVersion'), (r,c)
+          assert r.get('frontendVersion') == c.get('frontendVersion'), (r,c)
+          print('Runtime contract PASS')
+          PY
+
+      - name: Install Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Browser QA PC / 390 / 320 / iPad / DEMO guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const base = 'https://izakaya-liff-demo.pages.dev';
+          const targets = [
+            {name:'pc-admin', path:'/admin.html?embed_demo=1', width:1440, height:1000},
+            {name:'mobile390-customer', path:'/index.html?embed_demo=1', width:390, height:844},
+            {name:'mobile320-customer', path:'/index.html?embed_demo=1', width:320, height:720},
+            {name:'ipad-owner', path:'/owner-ipad.html?embed_demo=1', width:1024, height:1366},
+          ];
+          (async () => {
+            const browser = await chromium.launch();
+            const results = [];
+            for (const t of targets) {
+              const page = await browser.newPage({viewport:{width:t.width,height:t.height}});
+              const response = await page.goto(base+t.path,{waitUntil:'networkidle',timeout:60000});
+              if (!response || !response.ok()) throw new Error(`${t.name} HTTP ${response?.status()}`);
+              await page.waitForTimeout(1000);
+              const m = await page.evaluate(() => ({
+                title: document.title,
+                bodyWidth: document.body.scrollWidth,
+                viewportWidth: document.documentElement.clientWidth,
+                productIdentity: /居酒屋DPRO|DPRO 居酒屋/.test(document.body.innerText)
+              }));
+              if (m.bodyWidth > m.viewportWidth + 2) throw new Error(`${t.name} horizontal overflow ${m.bodyWidth}>${m.viewportWidth}`);
+              if (!m.productIdentity) throw new Error(`${t.name} product identity missing`);
+              await page.screenshot({path:`/tmp/${t.name}.png`,fullPage:true});
+              results.push({...t,...m,ok:true});
+              await page.close();
+            }
+            const page = await browser.newPage({viewport:{width:1024,height:768}});
+            await page.goto(base+'/owner-ipad.html?embed_demo=1',{waitUntil:'networkidle',timeout:60000});
+            const mutation = await page.evaluate(async () => {
+              const r = await fetch('/api/admin/shop-status',{
+                method:'POST',
+                headers:{'Content-Type':'application/json','X-Admin-Token':'1234'},
+                body:JSON.stringify({status:'open',message:'QA'})
+              });
+              return {status:r.status, body:await r.text()};
+            });
+            if (mutation.status !== 403) throw new Error(`DEMO mutation was not blocked: ${mutation.status}`);
+            results.push({name:'demo-mutation-guard',ok:true,status:mutation.status});
+            fs.writeFileSync('/tmp/browser-qa.json', JSON.stringify(results,null,2));
+            await browser.close();
+          })().catch(e => { console.error(e); process.exit(1); });
+          NODE
+
+      - name: Public URL QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 30 https://dpromstk2000-lab.github.io/dpro-line-systems-site/systems/izakaya.html > /tmp/product.html
+          grep -q '居酒屋' /tmp/product.html
+          curl -fsSL --max-time 30 https://dpro-shop.com/systems/izakaya > /tmp/official.html
+          grep -q '居酒屋' /tmp/official.html
+
+      - name: Commit live QA evidence and remove bridge
+        shell: python
+        run: |
+          from pathlib import Path
+          import json, os, datetime
+          health=json.load(open('/tmp/health.json'))
+          check=json.load(open('/tmp/system-check.json'))
+          browser=json.load(open('/tmp/browser-qa.json'))
+          evidence={
+            "systemCode":"IZAKAYA",
+            "scope":"#14 only",
+            "sourceHead":os.environ["SOURCE_HEAD"],
+            "workerVersion":check["workerVersion"],
+            "databaseVersion":check["databaseVersion"],
+            "frontendVersion":check["frontendVersion"],
+            "systemCheckOk":check["ok"],
+            "blockingFailCount":check["blockingFailCount"],
+            "productionGuard":check["productionGuard"],
+            "dbOk":check["dbOk"],
+            "versionsAligned":check["versionsAligned"],
+            "browserQA":browser,
+            "publicURLs":{
+              "demo":"https://izakaya-liff-demo.pages.dev/owner-ipad.html?embed_demo=1",
+              "product":"https://dpromstk2000-lab.github.io/dpro-line-systems-site/systems/izakaya.html",
+              "official":"https://dpro-shop.com/systems/izakaya"
+            },
+            "checkedAt":datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "standardChanged":False
+          }
+          Path("PRODUCT_READY_LIVE_QA.json").write_text(json.dumps(evidence,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          Path(".github/workflows/izakaya-product-ready-apply.yml").unlink(missing_ok=True)
+
+      - name: Finalize clean HEAD
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f package.json package-lock.json
+          rm -rf node_modules
+          git add PRODUCT_READY_LIVE_QA.json
+          git add -u .github/workflows/izakaya-product-ready-apply.yml
+          git commit -m "DPRO Product READY #14 IZAKAYA live QA PASS"
+          git push origin HEAD:main
+          echo "FINAL_HEAD=$(git rev-parse HEAD)"
