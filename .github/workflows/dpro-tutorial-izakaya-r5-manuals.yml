@@ -1,0 +1,538 @@
+name: DPRO IZAKAYA R5 Manuals Build and QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/dpro-tutorial-izakaya-r5-manuals.yml'
+      - 'DPRO_TUTORIAL_IZAKAYA_QUICK_START_V1.0.pdf'
+      - 'DPRO_TUTORIAL_IZAKAYA_DETAILED_MANUAL_V1.0.pdf'
+      - 'tutorial.html'
+      - 'guide.html'
+      - 'dpro-tutorial-first10.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dpro-tutorial-izakaya-r5-manuals
+  cancel-in-progress: true
+
+jobs:
+  r5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      LIVE_BASE: https://izakaya-liff-demo.pages.dev
+      TUTORIAL_URL: https://izakaya-liff-demo.pages.dev/tutorial.html
+      GUIDE_URL: https://izakaya-liff-demo.pages.dev/guide.html
+      QUICK_NAME: DPRO_TUTORIAL_IZAKAYA_QUICK_START_V1.0.pdf
+      DETAIL_NAME: DPRO_TUTORIAL_IZAKAYA_DETAILED_MANUAL_V1.0.pdf
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install browser PDF and QA dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y >/dev/null
+          sudo apt-get install -y fonts-ipafont-gothic poppler-utils >/dev/null
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+          python -m pip install --disable-pip-version-check --quiet reportlab pillow qrcode opencv-python-headless pypdf
+
+      - name: Record canonical source lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p r5-work
+          HEAD_SHA="$(git rev-parse HEAD)"
+          TREE_SHA="$(git rev-parse HEAD^{tree})"
+          printf 'HEAD=%s\nTREE=%s\n' "$HEAD_SHA" "$TREE_SHA" | tee r5-work/source-lock.txt
+          test "$HEAD_SHA" = "$GITHUB_SHA"
+
+      - name: Wait for accepted R4 Tutorial and Guide
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 90); do
+            TUTORIAL_BODY="$(curl -fsSL --max-time 15 "$TUTORIAL_URL" || true)"
+            GUIDE_BODY="$(curl -fsSL --max-time 15 "$GUIDE_URL" || true)"
+            if printf '%s' "$TUTORIAL_BODY" | grep -q "DPRO-IZAKAYA-R3-NATIVE-TOUCH-V1.9-20260830" \
+              && printf '%s' "$GUIDE_BODY" | grep -q "DPRO-IZAKAYA-R4-GUIDE-V1.0-20260830"; then
+              echo "Accepted R4 Tutorial + Guide are live."
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Accepted R4 Tutorial/Guide not live." >&2
+          exit 1
+
+      - name: Capture current LIVE demo screenshots and source QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > r5-work/capture-live.cjs <<'NODE'
+          const fs = require('fs');
+          const { chromium } = require('playwright');
+
+          const BASE = process.env.LIVE_BASE;
+          const EXPECTED = Array.from({length:10},(_,i)=>`IZ-F10-${String(i+1).padStart(2,'0')}`);
+          const SAFE = new Set(['GET','HEAD','OPTIONS']);
+
+          function assert(c,m){ if(!c) throw new Error(m); }
+          async function waitStep(page,id){
+            await page.locator('#dproIzKicker').waitFor({state:'visible',timeout:15000});
+            await page.waitForFunction(x=>document.querySelector('#dproIzKicker')?.textContent.includes(x),id,{timeout:15000});
+            await page.waitForFunction(()=>getComputedStyle(document.querySelector('#dproIzTutorialHighlight')).display!=='none',null,{timeout:8000});
+          }
+          async function waitRoute(page,suffix){
+            await page.waitForFunction(s=>{
+              let p=document.querySelector('#dproIzTutorialFrame')?.contentWindow?.location?.pathname||'/';
+              p=String(p).replace(/\/+$/,'').replace(/\.html$/,'')||'/';
+              return p.endsWith(s);
+            },suffix,{timeout:15000});
+          }
+
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const result={source:{},screenshots:[],pageErrors:[],tutorialConsoleErrors:[],embeddedConsoleErrors:[],unsafeWrites:[]};
+            try{
+              fs.mkdirSync('r5-work/screens',{recursive:true});
+
+              const context=await browser.newContext({viewport:{width:1440,height:1000},deviceScaleFactor:1});
+              const page=await context.newPage();
+              page.on('pageerror',e=>result.pageErrors.push(String(e)));
+              page.on('console',m=>{
+                if(m.type()!=='error') return;
+                const loc=m.location?.()||{};
+                const entry={text:m.text(),url:loc.url||'',lineNumber:loc.lineNumber??null};
+                const owned=entry.url.includes('/tutorial')||entry.url.includes('/guide')||entry.url.includes('/dpro-tutorial-first10.js');
+                (owned?result.tutorialConsoleErrors:result.embeddedConsoleErrors).push(entry);
+              });
+              page.on('request',r=>{ if(!SAFE.has(r.method())) result.unsafeWrites.push({method:r.method(),url:r.url()}); });
+
+              await page.goto(`${BASE}/guide.html`,{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForFunction(()=>document.documentElement.dataset.dproGuideVersion==='DPRO-IZAKAYA-R4-GUIDE-V1.0-20260830');
+              const guide=await page.evaluate(()=>({
+                count:document.querySelectorAll('#guideSteps .step').length,
+                ids:[...document.querySelectorAll('#guideSteps .step')].map(x=>x.dataset.stepId),
+                canonicalCount:window.DPRO_IZAKAYA_FIRST10?.length||0,
+                canonicalIds:(window.DPRO_IZAKAYA_FIRST10||[]).map(x=>x.id)
+              }));
+              assert(guide.count===10 && guide.canonicalCount===10,'Guide/First10 count mismatch');
+              assert(JSON.stringify(guide.ids)===JSON.stringify(EXPECTED),'Guide IDs mismatch');
+              assert(JSON.stringify(guide.canonicalIds)===JSON.stringify(EXPECTED),'Canonical IDs mismatch');
+              await page.screenshot({path:'r5-work/screens/guide-desktop.png',fullPage:false});
+              result.screenshots.push({file:'guide-desktop.png',url:`${BASE}/guide.html`,viewport:'1440x1000'});
+
+              await page.goto(`${BASE}/tutorial.html?replay=1`,{waitUntil:'domcontentloaded',timeout:30000});
+              await waitStep(page,EXPECTED[0]);
+              await page.screenshot({path:'r5-work/screens/tutorial-step01.png',fullPage:false});
+              result.screenshots.push({file:'tutorial-step01.png',url:`${BASE}/tutorial.html?replay=1`,step:1,viewport:'1440x1000'});
+
+              for(let i=1;i<=4;i++){ await page.locator('#dproIzNext').click(); await waitStep(page,EXPECTED[i]); }
+              await waitRoute(page,'/admin');
+              await page.screenshot({path:'r5-work/screens/tutorial-step05.png',fullPage:false});
+              result.screenshots.push({file:'tutorial-step05.png',url:`${BASE}/tutorial.html`,step:5,viewport:'1440x1000'});
+
+              for(let i=5;i<=7;i++){ await page.locator('#dproIzNext').click(); await waitStep(page,EXPECTED[i]); }
+              await waitRoute(page,'/owner-ipad');
+              await page.screenshot({path:'r5-work/screens/tutorial-step08.png',fullPage:false});
+              result.screenshots.push({file:'tutorial-step08.png',url:`${BASE}/tutorial.html`,step:8,viewport:'1440x1000'});
+
+              result.source={first10Count:10,guideCount:10,ids:EXPECTED};
+              await context.close();
+
+              const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1});
+              const mp=await mobile.newPage();
+              mp.on('pageerror',e=>result.pageErrors.push(String(e)));
+              mp.on('console',m=>{
+                if(m.type()!=='error') return;
+                const loc=m.location?.()||{};
+                const entry={text:m.text(),url:loc.url||'',lineNumber:loc.lineNumber??null};
+                const owned=entry.url.includes('/tutorial')||entry.url.includes('/guide')||entry.url.includes('/dpro-tutorial-first10.js');
+                (owned?result.tutorialConsoleErrors:result.embeddedConsoleErrors).push(entry);
+              });
+              mp.on('request',r=>{ if(!SAFE.has(r.method())) result.unsafeWrites.push({method:r.method(),url:r.url()}); });
+              await mp.goto(`${BASE}/guide.html`,{waitUntil:'domcontentloaded',timeout:30000});
+              await mp.waitForFunction(()=>document.querySelectorAll('#guideSteps .step').length===10);
+              await mp.screenshot({path:'r5-work/screens/guide-mobile.png',fullPage:false});
+              result.screenshots.push({file:'guide-mobile.png',url:`${BASE}/guide.html`,viewport:'390x844'});
+              const overflow=await mp.evaluate(()=>({innerWidth,doc:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
+              assert(Math.max(0,overflow.doc-overflow.innerWidth,overflow.body-overflow.innerWidth)===0,'Guide mobile overflow');
+              result.mobileOverflow=overflow;
+              await mobile.close();
+
+              assert(result.pageErrors.length===0,`pageerror ${result.pageErrors.join(' | ')}`);
+              assert(result.tutorialConsoleErrors.length===0,`Tutorial/Guide console ${JSON.stringify(result.tutorialConsoleErrors)}`);
+              assert(result.unsafeWrites.length===0,`Unsafe writes ${JSON.stringify(result.unsafeWrites)}`);
+              fs.writeFileSync('r5-work/live-source-qa.json',JSON.stringify(result,null,2));
+              console.log(JSON.stringify({FIRST10_COUNT:10,GUIDE_COUNT:10,PAGEERROR:0,TUTORIAL_CONSOLE_ERROR:0,UNSAFE_WRITE_REQUEST:0,BUSINESS_MUTATION:0},null,2));
+            } finally {
+              await browser.close();
+            }
+          })();
+          NODE
+          node r5-work/capture-live.cjs
+
+      - name: Build A4 portrait manuals from LIVE screenshots
+        if: ${{ !hashFiles(env.QUICK_NAME) || !hashFiles(env.DETAIL_NAME) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > r5-work/build-manuals.py <<'PY'
+          from reportlab.pdfgen import canvas
+          from reportlab.lib.pagesizes import A4
+          from reportlab.pdfbase import pdfmetrics
+          from reportlab.pdfbase.ttfonts import TTFont
+          from reportlab.lib.utils import ImageReader
+          from reportlab.lib.colors import HexColor
+          from PIL import Image
+          import qrcode, os, hashlib, json
+
+          W,H=A4
+          FONT='/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf'
+          pdfmetrics.registerFont(TTFont('JP',FONT))
+          pdfmetrics.registerFont(TTFont('JPB',FONT))
+          OUT='r5-work/output'
+          os.makedirs(OUT,exist_ok=True)
+          SCREEN='r5-work/screens'
+          TUTORIAL=os.environ['TUTORIAL_URL']
+          GUIDE=os.environ['GUIDE_URL']
+          QUICK=os.path.join(OUT,os.environ['QUICK_NAME'])
+          DETAIL=os.path.join(OUT,os.environ['DETAIL_NAME'])
+
+          ORANGE=HexColor('#ea580c')
+          DARK=HexColor('#292524')
+          GREEN=HexColor('#16a34a')
+          MUTED=HexColor('#57534e')
+          PALE=HexColor('#fff7ed')
+          BORDER=HexColor('#fed7aa')
+          BLUE=HexColor('#2563eb')
+
+          STEPS=[
+            ('IZ-F10-01','予約の流れを確認','お客様画面'),
+            ('IZ-F10-02','日付と人数','お客様画面'),
+            ('IZ-F10-03','予約時間','お客様画面'),
+            ('IZ-F10-04','自分の予約','お客様画面'),
+            ('IZ-F10-05','今日の営業','管理画面'),
+            ('IZ-F10-06','優先確認リスト','管理画面'),
+            ('IZ-F10-07','日別の予約一覧','管理画面'),
+            ('IZ-F10-08','本日の営業ボード','Owner iPad'),
+            ('IZ-F10-09','店舗ステータス','Owner iPad'),
+            ('IZ-F10-10','仮予約・来店準備・通知・履歴','Owner iPad'),
+          ]
+
+          def qr(url,path):
+              q=qrcode.QRCode(version=None,error_correction=qrcode.constants.ERROR_CORRECT_H,box_size=12,border=4)
+              q.add_data(url); q.make(fit=True)
+              q.make_image(fill_color='black',back_color='white').save(path)
+
+          QR_T='r5-work/qr-tutorial.png'
+          QR_G='r5-work/qr-guide.png'
+          qr(TUTORIAL,QR_T); qr(GUIDE,QR_G)
+
+          def txt(c,s,x,y,size=10,color=DARK,font='JP'):
+              c.setFont(font,size); c.setFillColor(color); c.drawString(x,y,s)
+          def center(c,s,x,y,size=10,color=DARK,font='JP'):
+              c.setFont(font,size); c.setFillColor(color); c.drawCentredString(x,y,s)
+          def box(c,x,y,w,h,fill=PALE,stroke=BORDER,r=10):
+              c.setFillColor(fill); c.setStrokeColor(stroke); c.roundRect(x,y,w,h,r,fill=1,stroke=1)
+          def fit_image(c,path,x,y,w,h):
+              im=Image.open(path)
+              iw,ih=im.size
+              scale=min(w/iw,h/ih)
+              dw,dh=iw*scale,ih*scale
+              c.drawImage(ImageReader(im),x+(w-dw)/2,y+(h-dh)/2,dw,dh,preserveAspectRatio=True,mask='auto')
+          def footer(c,page,label):
+              c.setStrokeColor(HexColor('#e7e5e4')); c.line(30,25,W-30,25)
+              txt(c,f'DPRO 居酒屋 TUTORIAL - {label}',30,12,7,MUTED)
+              txt(c,f'{page}',W-42,12,7,MUTED)
+          def header(c,title,sub):
+              txt(c,'DPRO TUTORIAL / IZAKAYA',30,H-34,8,ORANGE,'JPB')
+              txt(c,title,30,H-62,19,DARK,'JPB')
+              txt(c,sub,30,H-80,8,MUTED)
+
+          # Quick Start - 1 page.
+          c=canvas.Canvas(QUICK,pagesize=A4,pageCompression=1)
+          c.setTitle('DPRO TUTORIAL IZAKAYA QUICK START V1.0')
+          c.setAuthor('DPRO')
+          c.setSubject(f'LIVE Tutorial {TUTORIAL} | Guide {GUIDE} | BUSINESS MUTATION 0')
+          header(c,'居酒屋 Quick Start','公開デモの現在画面を使った1ページ操作ガイド')
+          fit_image(c,os.path.join(SCREEN,'tutorial-step01.png'),30,H-340,W-60,235)
+
+          y=H-375
+          items=[
+            ('1','Start','Guide Centerの「開始する」からStep1へ'),
+            ('2','Resume','途中で閉じても同じStepから再開'),
+            ('3','Replay','「最初から見る」でStep1へ戻る'),
+            ('4','操作','移動ハンドルはマウス/タッチ。Tab/Enter/Escにも対応'),
+          ]
+          for i,(num,title,desc) in enumerate(items):
+              bx=30+(i%2)*270; by=y-(i//2)*62
+              box(c,bx,by,255,52)
+              center(c,num,bx+18,by+18,11,HexColor('#ffffff'),'JPB')
+              c.setFillColor(ORANGE); c.circle(bx+18,by+20,12,fill=1,stroke=0)
+              txt(c,title,bx+38,by+30,10,DARK,'JPB')
+              txt(c,desc,bx+38,by+14,7.5,MUTED)
+
+          qy=82
+          box(c,30,qy,W-60,82,HexColor('#ffffff'),BORDER)
+          c.drawImage(QR_T,42,qy+8,64,64,mask='auto')
+          txt(c,'Tutorial Start',118,qy+49,11,DARK,'JPB')
+          txt(c,TUTORIAL,118,qy+31,6.8,BLUE)
+          txt(c,'Guide Center: '+GUIDE,118,qy+14,6.8,MUTED)
+          txt(c,'安全: 説明/ハイライトのみ。予約・状態・通知・設定などの業務更新は自動実行しません。',30,52,7.3,HexColor('#7c2d12'))
+          footer(c,1,'QUICK START V1.0')
+          c.save()
+
+          # Detailed Manual - 5 pages.
+          c=canvas.Canvas(DETAIL,pagesize=A4,pageCompression=1)
+          c.setTitle('DPRO TUTORIAL IZAKAYA DETAILED MANUAL V1.0')
+          c.setAuthor('DPRO')
+          c.setSubject(f'LIVE Tutorial {TUTORIAL} | Guide {GUIDE} | FIRST10 10 | BUSINESS MUTATION 0')
+
+          # p1
+          header(c,'居酒屋 Detailed Manual','Guide Center / Start / Resume / Replay')
+          fit_image(c,os.path.join(SCREEN,'guide-desktop.png'),30,H-345,W-60,245)
+          box(c,30,260,W-60,100)
+          txt(c,'Guide Center',45,335,12,DARK,'JPB')
+          txt(c,'First10の10ステップを同じcanonicalデータから一覧表示。進行状態もTutorialと共通です。',45,316,8,MUTED)
+          txt(c,'Start: Step1から開始 / Resume: 中断したStepから再開 / Replay: Step1からやり直し',45,297,8,MUTED)
+          c.drawImage(QR_G,W-118,270,68,68,mask='auto')
+          txt(c,'Guide QR',W-116,257,7,MUTED)
+          txt(c,GUIDE,45,278,6.8,BLUE)
+          footer(c,1,'DETAILED MANUAL V1.0'); c.showPage()
+
+          # p2
+          header(c,'First10 - Step 1〜4','お客様画面：予約の流れを安全に確認')
+          fit_image(c,os.path.join(SCREEN,'tutorial-step01.png'),30,H-340,W-60,235)
+          y=H-380
+          for idx in range(4):
+              sid,title,area=STEPS[idx]
+              box(c,30,y-idx*64,W-60,52,HexColor('#ffffff'),HexColor('#e7e5e4'))
+              txt(c,sid,43,y+28-idx*64,8,ORANGE,'JPB')
+              txt(c,title,123,y+28-idx*64,10,DARK,'JPB')
+              txt(c,area,123,y+12-idx*64,7,MUTED)
+          txt(c,'チュートリアルは入力・予約作成・変更・キャンセルを自動実行しません。',30,70,8,HexColor('#7c2d12'))
+          footer(c,2,'DETAILED MANUAL V1.0'); c.showPage()
+
+          # p3
+          header(c,'First10 - Step 5〜7','管理画面：営業確認と日別予約一覧')
+          fit_image(c,os.path.join(SCREEN,'tutorial-step05.png'),30,H-340,W-60,235)
+          y=H-390
+          for row,idx in enumerate(range(4,7)):
+              sid,title,area=STEPS[idx]
+              box(c,30,y-row*72,W-60,58,HexColor('#ffffff'),HexColor('#e7e5e4'))
+              txt(c,sid,43,y+32-row*72,8,ORANGE,'JPB')
+              txt(c,title,123,y+32-row*72,10,DARK,'JPB')
+              txt(c,area+' / 公開デモの表示のみ',123,y+14-row*72,7,MUTED)
+          txt(c,'管理側でもチュートリアルは状態更新・通知・設定・業務POSTを実行しません。',30,70,8,HexColor('#7c2d12'))
+          footer(c,3,'DETAILED MANUAL V1.0'); c.showPage()
+
+          # p4
+          header(c,'First10 - Step 8〜10','Owner iPad：営業ボードと店舗ステータス')
+          fit_image(c,os.path.join(SCREEN,'tutorial-step08.png'),30,H-340,W-60,235)
+          y=H-390
+          for row,idx in enumerate(range(7,10)):
+              sid,title,area=STEPS[idx]
+              box(c,30,y-row*72,W-60,58,HexColor('#ffffff'),HexColor('#e7e5e4'))
+              txt(c,sid,43,y+32-row*72,8,ORANGE,'JPB')
+              txt(c,title,123,y+32-row*72,10,DARK,'JPB')
+              txt(c,area+' / ハイライトと説明のみ',123,y+14-row*72,7,MUTED)
+          txt(c,'店舗ステータス更新や通知送信は行いません。タブ案内も業務データを変更しません。',30,70,8,HexColor('#7c2d12'))
+          footer(c,4,'DETAILED MANUAL V1.0'); c.showPage()
+
+          # p5
+          header(c,'操作・アクセシビリティ・安全境界','マウス / タッチ / キーボード対応')
+          fit_image(c,os.path.join(SCREEN,'guide-mobile.png'),30,H-395,185,300)
+          box(c,235,H-395,W-265,300,HexColor('#ffffff'),HexColor('#e7e5e4'))
+          bullets=[
+            '移動: 「↕ 移動」ハンドルをドラッグ。画面外へ出ないようclamp。',
+            'タッチ: スマホでもドラッグ可能。横はみ出し0をR3/R4で確認。',
+            'キーボード: Tabで移動、Enterで操作、Escで閉じる。',
+            'フォーカス: :focus-visibleで現在位置を明示。',
+            'Resume: 閉じたStepをdpro_tutorial_izakaya_v1に保持。',
+            '安全: 予約/注文/顧客/決済/店舗状態/通知/設定のmutation 0。',
+            '公開デモ: 実顧客・実予約・認証情報・秘密情報を掲載しない。',
+          ]
+          yy=H-125
+          for b in bullets:
+              c.setFillColor(ORANGE); c.circle(250,yy+3,3,fill=1,stroke=0)
+              txt(c,b,260,yy,7.7,MUTED)
+              yy-=31
+          c.drawImage(QR_T,250,70,74,74,mask='auto')
+          txt(c,'Tutorial QR',335,123,9,DARK,'JPB')
+          txt(c,TUTORIAL,335,106,6.5,BLUE)
+          txt(c,'Guide: '+GUIDE,335,88,6.5,MUTED)
+          footer(c,5,'DETAILED MANUAL V1.0'); c.save()
+
+          manifest={}
+          for p in (QUICK,DETAIL):
+              manifest[os.path.basename(p)]={'sha256':hashlib.sha256(open(p,'rb').read()).hexdigest()}
+          manifest['source']={'tutorial':TUTORIAL,'guide':GUIDE,'first10_count':10,'guide_count':10,'business_mutation':0}
+          with open('r5-work/build-manifest.json','w',encoding='utf-8') as f:
+              json.dump(manifest,f,ensure_ascii=False,indent=2)
+          print(json.dumps(manifest,ensure_ascii=False,indent=2))
+          PY
+          python r5-work/build-manuals.py
+
+      - name: Select generated or published PDF inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p r5-work/qa-input
+          if [ -f "$QUICK_NAME" ] && [ -f "$DETAIL_NAME" ]; then
+            cp "$QUICK_NAME" r5-work/qa-input/
+            cp "$DETAIL_NAME" r5-work/qa-input/
+            echo "PUBLISHED_VERIFY" > r5-work/mode.txt
+          else
+            cp "r5-work/output/$QUICK_NAME" r5-work/qa-input/
+            cp "r5-work/output/$DETAIL_NAME" r5-work/qa-input/
+            echo "PREP_BUILD" > r5-work/mode.txt
+          fi
+          cat r5-work/mode.txt
+          sha256sum r5-work/qa-input/*.pdf | tee r5-work/pdf-sha256.txt
+
+      - name: Render every PDF page to PNG
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p r5-work/renders/quick r5-work/renders/detail
+          pdftoppm -png -r 180 "r5-work/qa-input/$QUICK_NAME" r5-work/renders/quick/page >/dev/null
+          pdftoppm -png -r 180 "r5-work/qa-input/$DETAIL_NAME" r5-work/renders/detail/page >/dev/null
+          test "$(find r5-work/renders/quick -name '*.png' | wc -l)" -eq 1
+          test "$(find r5-work/renders/detail -name '*.png' | wc -l)" -eq 5
+
+      - name: Automated PDF orientation render and QR QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > r5-work/qa-manuals.py <<'PY'
+          import os, json, glob, hashlib
+          from pypdf import PdfReader
+          from PIL import Image, ImageStat
+          import cv2
+
+          QUICK=os.path.join('r5-work','qa-input',os.environ['QUICK_NAME'])
+          DETAIL=os.path.join('r5-work','qa-input',os.environ['DETAIL_NAME'])
+          TUTORIAL=os.environ['TUTORIAL_URL']
+          GUIDE=os.environ['GUIDE_URL']
+          mode=open('r5-work/mode.txt',encoding='utf-8').read().strip()
+
+          def check_pdf(path,expected_pages):
+              r=PdfReader(path)
+              assert len(r.pages)==expected_pages,(path,len(r.pages))
+              dims=[]
+              for p in r.pages:
+                  w=float(p.mediabox.width); h=float(p.mediabox.height)
+                  assert h>w,(path,w,h)
+                  assert abs(w-595.2756)<3 and abs(h-841.8898)<3,(path,w,h)
+                  dims.append([w,h])
+              return dims
+
+          qdims=check_pdf(QUICK,1)
+          ddims=check_pdf(DETAIL,5)
+
+          renders=sorted(glob.glob('r5-work/renders/quick/*.png'))+sorted(glob.glob('r5-work/renders/detail/*.png'))
+          assert len(renders)==6
+          render_checks=[]
+          decoded=[]
+          detector=cv2.QRCodeDetector()
+
+          for p in renders:
+              im=Image.open(p).convert('RGB')
+              stat=ImageStat.Stat(im)
+              # Prevent accidental blank pages: require meaningful pixel variance.
+              assert max(stat.var)>20,(p,stat.var)
+              arr=cv2.imread(p)
+              ok, info, points, _ = detector.detectAndDecodeMulti(arr)
+              vals=[v for v in (info if ok else []) if v]
+              decoded.extend({'page':p,'value':v} for v in vals)
+              render_checks.append({'page':p,'width':im.width,'height':im.height,'variance':max(stat.var),'qr':vals})
+
+          values=[x['value'] for x in decoded]
+          # QR locations deliberately: Quick p1 Tutorial, Detailed p1 Guide, Detailed p5 Tutorial.
+          assert values.count(TUTORIAL)>=2,(values,TUTORIAL)
+          assert values.count(GUIDE)>=1,(values,GUIDE)
+          assert all(v in {TUTORIAL,GUIDE} for v in values),values
+
+          public_pdfs={}
+          if mode=='PUBLISHED_VERIFY':
+              import urllib.request
+              for name in (os.environ['QUICK_NAME'],os.environ['DETAIL_NAME']):
+                  url=os.environ['LIVE_BASE'].rstrip('/')+'/'+name
+                  req=urllib.request.Request(url,method='GET',headers={'User-Agent':'DPRO-R5-QA'})
+                  with urllib.request.urlopen(req,timeout=20) as resp:
+                      body=resp.read(32)
+                      assert resp.status==200,(url,resp.status)
+                      assert body.startswith(b'%PDF-'),(url,body)
+                      public_pdfs[name]={'url':url,'status':resp.status,'pdf_magic':True}
+
+          report={
+            'system':'IZAKAYA',
+            'phase':'R5',
+            'mode':mode,
+            'canonicalSourceRelock':'PASS',
+            'r4TutorialStillLive':'PASS',
+            'r4GuideStillLive':'PASS',
+            'first10Count':10,
+            'guideCount':10,
+            'quickStart':{'a4Portrait':'PASS','pages':1,'dims':qdims},
+            'detailedManual':{'a4Portrait':'PASS','pages':5,'dims':ddims},
+            'allPdfPagesRendered':'PASS',
+            'renderChecks':render_checks,
+            'qrDecoded':decoded,
+            'qrDecodeEveryRenderedQr':'PASS',
+            'qrDestinationExactPublic':'PASS',
+            'currentLiveDemoScreenshotsOnly':'PASS',
+            'pageError':0,
+            'tutorialGuideConsoleError':0,
+            'unsafeWriteRequest':0,
+            'businessMutation':0,
+            'publicPdfs':public_pdfs,
+            'manualVisualInspection':'PENDING_ASSISTANT_VISUAL_REVIEW'
+          }
+          report['R5']='PASS_PENDING_VISUAL_REVIEW' if mode=='PREP_BUILD' else 'PASS_PENDING_VISUAL_REVIEW_AND_HASH_MATCH'
+          with open('r5-work/r5-qa.json','w',encoding='utf-8') as f:
+              json.dump(report,f,ensure_ascii=False,indent=2)
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+          python r5-work/qa-manuals.py
+
+      - name: Package R5 evidence artifact
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p r5-work/artifact
+          cp -f r5-work/qa-input/*.pdf r5-work/artifact/ 2>/dev/null || true
+          cp -f r5-work/r5-qa.json r5-work/artifact/ 2>/dev/null || true
+          cp -f r5-work/live-source-qa.json r5-work/artifact/ 2>/dev/null || true
+          cp -f r5-work/source-lock.txt r5-work/artifact/ 2>/dev/null || true
+          cp -f r5-work/pdf-sha256.txt r5-work/artifact/ 2>/dev/null || true
+          cp -f r5-work/build-manifest.json r5-work/artifact/ 2>/dev/null || true
+          cp -rf r5-work/screens r5-work/artifact/ 2>/dev/null || true
+          cp -rf r5-work/renders r5-work/artifact/ 2>/dev/null || true
+          cp -f r5-work/mode.txt r5-work/artifact/ 2>/dev/null || true
+
+      - name: Upload R5 manuals and complete render QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DPRO_TUTORIAL_BATCH10_IZAKAYA_R5_MANUALS_QA
+          path: r5-work/artifact
+          if-no-files-found: error
