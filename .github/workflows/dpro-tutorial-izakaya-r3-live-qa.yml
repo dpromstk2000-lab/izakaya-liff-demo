@@ -143,19 +143,27 @@ jobs:
             const h = await page.locator('#dproIzDragHandle').boundingBox();
             const before = await cardBox(page);
             assert(h, 'Touch drag handle missing');
-            const cdp = await context.newCDPSession(page);
             const sx=h.x+h.width/2, sy=h.y+h.height/2;
-            await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:sx,y:sy,radiusX:1,radiusY:1,force:1,id:1}]});
-            for(let i=1;i<=8;i++){
-              const x=sx+(width-2-sx)*i/8, y=sy+(height-2-sy)*i/8;
-              await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y,radiusX:1,radiusY:1,force:1,id:1}]});
-            }
-            await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+            const ex=width-2, ey=height-2;
+            await page.evaluate(({sx,sy,ex,ey}) => {
+              const handle = document.querySelector('#dproIzDragHandle');
+              if (!handle) throw new Error('Touch drag handle missing in DOM');
+              const fire = (target,type,x,y,buttons) => target.dispatchEvent(new PointerEvent(type,{
+                bubbles:true,cancelable:true,pointerId:91,pointerType:'touch',isPrimary:true,
+                clientX:x,clientY:y,buttons,button:0,pressure:buttons?0.5:0
+              }));
+              fire(handle,'pointerdown',sx,sy,1);
+              for(let i=1;i<=8;i++){
+                const x=sx+(ex-sx)*i/8, y=sy+(ey-sy)*i/8;
+                fire(window,'pointermove',x,y,1);
+              }
+              fire(window,'pointerup',ex,ey,0);
+            }, {sx,sy,ex,ey});
             await page.waitForTimeout(120);
             const after = await cardBox(page);
             assert(Math.abs(after.x-before.x)>10 || Math.abs(after.y-before.y)>10, 'Touch/pointer drag did not move card');
             assert(insideViewport(after,width,height), 'Touch drag viewport clamp failed');
-            return {before,after};
+            return {method:'PointerEvent(pointerType=touch)',before,after};
           }
           async function functionalQA(page, view) {
             const resolved=[];
