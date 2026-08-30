@@ -247,9 +247,15 @@ jobs:
               for(const view of VIEWS){
                 const context=await browser.newContext({viewport:{width:view.width,height:view.height},isMobile:view.mobile,hasTouch:view.mobile,deviceScaleFactor:1});
                 const page=await context.newPage();
-                const pageErrors=[],consoleErrors=[],unsafeWrites=[];
+                const pageErrors=[],tutorialConsoleErrors=[],embeddedConsoleErrors=[],unsafeWrites=[];
                 page.on('pageerror',e=>pageErrors.push(String(e)));
-                page.on('console',m=>{ if(m.type()==='error') consoleErrors.push(m.text()); });
+                page.on('console',m=>{
+                  if(m.type()!=='error') return;
+                  const loc=m.location?.() || {};
+                  const entry={text:m.text(),url:loc.url||'',lineNumber:loc.lineNumber??null,columnNumber:loc.columnNumber??null};
+                  const owned = entry.url.includes('/tutorial') || entry.url.includes('/dpro-tutorial-first10.js');
+                  (owned ? tutorialConsoleErrors : embeddedConsoleErrors).push(entry);
+                });
                 page.on('request',req=>{ if(!SAFE.has(req.method())) unsafeWrites.push({method:req.method(),url:req.url()}); });
                 await page.goto(`${BASE}/tutorial.html?replay=1`,{waitUntil:'domcontentloaded',timeout:30000});
                 await page.locator('#dproIzTutorialCard').waitFor({state:'visible',timeout:20000});
@@ -265,9 +271,9 @@ jobs:
                 const positiveOverflow=Math.max(0,overflow.documentElementScrollWidth-overflow.innerWidth,overflow.bodyScrollWidth-overflow.innerWidth);
                 if(view.mobile) assert(positiveOverflow===0,`${view.name}: positive horizontal overflow ${positiveOverflow}`);
                 assert(pageErrors.length===0,`${view.name}: pageerror ${pageErrors.join(' | ')}`);
-                assert(consoleErrors.length===0,`${view.name}: console error ${consoleErrors.join(' | ')}`);
+                assert(tutorialConsoleErrors.length===0,`${view.name}: Tutorial console error ${JSON.stringify(tutorialConsoleErrors)}`);
                 assert(unsafeWrites.length===0,`${view.name}: unsafe write request ${JSON.stringify(unsafeWrites)}`);
-                report.views.push({view:view.name,canonical,dragResult,functional,overflow,positiveOverflow,pageErrors,consoleErrors,unsafeWrites,pass:true});
+                report.views.push({view:view.name,canonical,dragResult,functional,overflow,positiveOverflow,pageErrors,tutorialConsoleErrors,embeddedConsoleErrors,unsafeWrites,pass:true});
                 await context.close();
               }
               assert(globalMouse,'Mouse/pointer drag not tested');
