@@ -42,14 +42,16 @@ jobs:
         run: |
           set -euo pipefail
           for i in $(seq 1 90); do
-            BODY="$(curl -fsSL --max-time 15 "$LIVE_BASE/dpro-tutorial-first10.js" || true)"
-            if printf '%s' "$BODY" | grep -q "IZAKAYA-FIRST10-R3-V1.1-20260830"; then
-              echo "Current R3 tutorial is live."
+            JS_BODY="$(curl -fsSL --max-time 15 "$LIVE_BASE/dpro-tutorial-first10.js" || true)"
+            HTML_BODY="$(curl -fsSL --max-time 15 "$LIVE_BASE/tutorial.html" || true)"
+            if printf '%s' "$JS_BODY" | grep -q "IZAKAYA-FIRST10-R3-V1.1-20260830" \
+              && printf '%s' "$HTML_BODY" | grep -q "DPRO-IZAKAYA-R3-NATIVE-TOUCH-V1.9-20260830"; then
+              echo "Current R3 tutorial JS + native touch fallback are live."
               exit 0
             fi
             sleep 5
           done
-          echo "R3 tutorial did not become publicly available." >&2
+          echo "Current R3 tutorial/touch fallback did not become publicly available." >&2
           exit 1
 
       - name: Run exact four-width public LIVE QA
@@ -140,6 +142,10 @@ jobs:
             return {before,after};
           }
           async function touchPointerDrag(context, page, width, height) {
+            await page.waitForFunction(() =>
+              document.documentElement.dataset.dproNativeTouch === 'DPRO-IZAKAYA-R3-NATIVE-TOUCH-V1.9-20260830' &&
+              document.querySelector('#dproIzDragHandle')?.dataset.dproTouchFallback === '1'
+            , null, {timeout:10000});
             const h = await page.locator('#dproIzDragHandle').boundingBox();
             const before = await cardBox(page);
             assert(h, 'Touch drag handle missing');
