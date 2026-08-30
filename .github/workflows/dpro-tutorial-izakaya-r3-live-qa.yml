@@ -176,6 +176,13 @@ jobs:
             await page.evaluate(() => window.DPRO_IZAKAYA_TUTORIAL.replay());
             await waitStep(page,EXPECTED[0]);
             for(let i=1;i<=4;i++){ await page.locator('#dproIzNext').click(); await waitStep(page,EXPECTED[i]); }
+            await page.waitForFunction(() => {
+              const raw = document.querySelector('#dproIzTutorialFrame')?.contentWindow?.location?.pathname || '/';
+              let actual = String(raw).replace(/\/+$/, '') || '/';
+              if (actual === '/index.html' || actual === '/index') actual = '/';
+              else actual = actual.replace(/\.html$/, '') || '/';
+              return actual.endsWith('/admin');
+            }, null, {timeout:15000});
             let frame = await childFrame(page);
             assert(normalizePath(new URL(frame.url()).pathname).endsWith('/admin'),'Step5 is not on admin route');
             await page.locator('#dproIzClose').click();
@@ -184,6 +191,13 @@ jobs:
             assert(closedState.status==='IN_PROGRESS' && closedState.index===4,'Close did not preserve Step5');
             await page.locator('#dproIzLaunchMain').click();
             await waitStep(page,EXPECTED[4]);
+            await page.waitForFunction(() => {
+              const raw = document.querySelector('#dproIzTutorialFrame')?.contentWindow?.location?.pathname || '/';
+              let actual = String(raw).replace(/\/+$/, '') || '/';
+              if (actual === '/index.html' || actual === '/index') actual = '/';
+              else actual = actual.replace(/\.html$/, '') || '/';
+              return actual.endsWith('/admin');
+            }, null, {timeout:15000});
             frame=await childFrame(page);
             assert(normalizePath(new URL(frame.url()).pathname).endsWith('/admin'),'Resume did not restore admin route');
 
