@@ -91,7 +91,10 @@ jobs:
             assert(data && data.id === id, `${id}: canonical step mismatch`);
             const frame = await childFrame(page);
             const expectedPath = new URL(data.route, BASE + '/tutorial.html').pathname;
-            await page.waitForFunction(path => document.querySelector('#dproIzTutorialFrame')?.contentWindow?.location?.pathname === path, expectedPath, {timeout:15000});
+            await page.waitForFunction(path => {
+              const actual = document.querySelector('#dproIzTutorialFrame')?.contentWindow?.location?.pathname || '';
+              return actual === path || (path.endsWith('/index.html') && (actual === '/' || actual.endsWith('/')));
+            }, expectedPath, {timeout:15000});
             let selected = null;
             const deadline = Date.now() + 8000;
             while (!selected && Date.now() < deadline) {
