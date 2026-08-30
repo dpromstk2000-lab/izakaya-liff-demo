@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>DPRO 居酒屋｜Guide Center</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;color:#292524;background:#fafaf9}
+*{box-sizing:border-box}
+html,body{margin:0;max-width:100%;overflow-x:hidden;background:#fafaf9}
+body{min-height:100vh}
+main{width:min(1080px,calc(100% - 28px));margin:0 auto;padding:28px 0 56px}
+.hero{background:#292524;color:#fff;border-radius:26px;padding:26px;box-shadow:0 20px 60px rgba(0,0,0,.14)}
+.eyebrow{font-size:12px;font-weight:950;letter-spacing:.08em;color:#fdba74}
+h1{font-size:clamp(28px,5vw,48px);line-height:1.1;margin:9px 0 12px}
+.hero p{margin:0;line-height:1.8;color:#e7e5e4;font-weight:750}
+.state{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:18px}
+.badge{display:inline-flex;align-items:center;min-height:34px;padding:7px 11px;border-radius:999px;background:#fff7ed;color:#9a3412;font-weight:950;font-size:12px}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
+.actions a{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:11px 17px;border-radius:999px;text-decoration:none;font-weight:950}
+.primary{background:#16a34a;color:#fff}.secondary{background:#fff;color:#292524}.ghost{background:#fff7ed;color:#9a3412}
+.actions a[hidden]{display:none}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:14px;margin:30px 0 14px}
+.section-head h2{margin:0;font-size:24px}.section-head p{margin:0;color:#78716c;font-size:13px;font-weight:800}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.step{background:#fff;border:1px solid #e7e5e4;border-radius:20px;padding:18px;box-shadow:0 8px 28px rgba(0,0,0,.05)}
+.step-top{display:flex;justify-content:space-between;align-items:start;gap:10px}
+.step-id{font-size:11px;font-weight:950;color:#9a3412;letter-spacing:.05em}
+.route{font-size:11px;font-weight:900;color:#57534e;background:#f5f5f4;border-radius:999px;padding:6px 9px;white-space:nowrap}
+.step h3{font-size:18px;line-height:1.35;margin:7px 0 8px}
+.step p{font-size:13px;line-height:1.75;color:#57534e;font-weight:700;margin:0}
+.safe{margin-top:22px;padding:15px 17px;border-radius:16px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;font-size:12px;font-weight:850;line-height:1.65}
+#dproIzLauncher{display:none!important}
+:focus-visible{outline:3px solid #2563eb!important;outline-offset:3px!important}
+@media(max-width:720px){
+  main{width:min(100% - 18px,1080px);padding-top:12px}
+  .hero{border-radius:20px;padding:20px}
+  .grid{grid-template-columns:1fr}
+  .section-head{align-items:start;flex-direction:column}
+  .actions a{flex:1 1 42%}
+}
+@media(max-width:340px){
+  main{width:calc(100% - 12px)}
+  .hero{padding:16px}
+  .actions a{flex-basis:100%}
+  .step{padding:14px}
+}
+</style>
+</head>
+<body>
+<main data-dpro-guide-marker="DPRO-IZAKAYA-R4-GUIDE-V1.0-20260830">
+  <section class="hero" aria-labelledby="guide-title">
+    <div class="eyebrow">DPRO TUTORIAL / GUIDE CENTER</div>
+    <h1 id="guide-title">居酒屋システム 操作ガイド</h1>
+    <p>First10と同じ10ステップを、いつでも一覧で確認できます。チュートリアルの進行状態は共通で、途中から再開できます。</p>
+    <div class="state">
+      <span class="badge" id="guideState">状態を確認中</span>
+      <span class="badge">全10ステップ</span>
+      <span class="badge">業務データ更新 0</span>
+    </div>
+    <nav class="actions" aria-label="チュートリアル操作">
+      <a class="primary" id="guideStart" href="tutorial.html?start=1">開始する</a>
+      <a class="secondary" id="guideResume" href="tutorial.html?resume=1" hidden>途中から再開</a>
+      <a class="ghost" id="guideReplay" href="tutorial.html?replay=1">最初から見る</a>
+    </nav>
+  </section>
+
+  <div class="section-head">
+    <div><h2>First10</h2><p>R3で確定した同一データを表示</p></div>
+    <p id="guideCount">読み込み中</p>
+  </div>
+  <section class="grid" id="guideSteps" aria-label="First10 ステップ一覧"></section>
+  <div class="safe">安全モード：Guide Centerは説明・状態表示・チュートリアルへの移動のみです。予約、店舗ステータス、通知、設定、業務データの更新は実行しません。</div>
+</main>
+
+<script src="dpro-tutorial-first10.js"></script>
+<script>
+(() => {
+  'use strict';
+  const GUIDE_VERSION = 'DPRO-IZAKAYA-R4-GUIDE-V1.0-20260830';
+
+  function routeLabel(route) {
+    if (route.startsWith('admin')) return '管理画面';
+    if (route.startsWith('owner-ipad')) return 'Owner iPad';
+    return 'お客様画面';
+  }
+
+  function renderSteps() {
+    const steps = window.DPRO_IZAKAYA_FIRST10 || [];
+    const host = document.getElementById('guideSteps');
+    host.replaceChildren(...steps.map(step => {
+      const article = document.createElement('article');
+      article.className = 'step';
+      article.dataset.stepId = step.id;
+      article.innerHTML = `
+        <div class="step-top">
+          <span class="step-id"></span>
+          <span class="route"></span>
+        </div>
+        <h3></h3>
+        <p></p>`;
+      article.querySelector('.step-id').textContent = step.id;
+      article.querySelector('.route').textContent = routeLabel(step.route);
+      article.querySelector('h3').textContent = step.title;
+      article.querySelector('p').textContent = step.body;
+      return article;
+    }));
+    document.getElementById('guideCount').textContent = `${steps.length} / 10`;
+  }
+
+  function renderState() {
+    const api = window.DPRO_IZAKAYA_TUTORIAL;
+    const state = api?.readState ? api.readState() : {status:'NOT_STARTED',index:0};
+    const badge = document.getElementById('guideState');
+    const resume = document.getElementById('guideResume');
+    if (state.status === 'IN_PROGRESS') {
+      badge.textContent = `進行中 ${state.index + 1}/10`;
+      resume.textContent = `途中から再開 ${state.index + 1}/10`;
+      resume.hidden = false;
+    } else if (state.status === 'COMPLETED') {
+      badge.textContent = '完了済み';
+      resume.hidden = true;
+    } else {
+      badge.textContent = '未開始';
+      resume.hidden = true;
+    }
+  }
+
+  function bootGuide() {
+    document.documentElement.dataset.dproGuideVersion = GUIDE_VERSION;
+    renderSteps();
+    renderState();
+  }
+
+  window.addEventListener('pageshow', renderState);
+  window.addEventListener('storage', renderState);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) renderState(); });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootGuide, {once:true});
+  } else {
+    bootGuide();
+  }
+})();
+</script>
+</body>
+</html>
