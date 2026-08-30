@@ -226,9 +226,13 @@ jobs:
             const next=page.locator('#dproIzNext');
             await next.focus();
             for(let i=1;i<10;i++){
+              const focusedBeforeEnter = await page.evaluate(() => document.activeElement?.id || '');
+              assert(focusedBeforeEnter==='dproIzNext',`Keyboard focus left Next before ${EXPECTED[i]}: ${focusedBeforeEnter}`);
               await page.keyboard.press('Enter');
-              await waitStep(page,EXPECTED[i]);
+              await resolveStep(page,i);
             }
+            const focusedBeforeComplete = await page.evaluate(() => document.activeElement?.id || '');
+            assert(focusedBeforeComplete==='dproIzNext',`Keyboard focus left Next before completion: ${focusedBeforeComplete}`);
             await page.keyboard.press('Enter');
             await page.locator('#dproIzLauncher').waitFor({state:'visible'});
             const completed=await page.evaluate(() => JSON.parse(localStorage.getItem('dpro_tutorial_izakaya_v1')));
