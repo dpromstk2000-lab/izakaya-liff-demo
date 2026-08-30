@@ -73,6 +73,11 @@ jobs:
           function assert(condition, message) {
             if (!condition) throw new Error(message);
           }
+          function normalizePath(pathname) {
+            let p = String(pathname || '/').replace(/\/+$/, '') || '/';
+            if (p === '/index.html' || p === '/index') return '/';
+            return p.replace(/\.html$/, '') || '/';
+          }
           async function waitStep(page, id) {
             await page.locator('#dproIzKicker').waitFor({state:'visible', timeout:15000});
             await page.waitForFunction(expected => document.querySelector('#dproIzKicker')?.textContent.includes(expected), id, {timeout:15000});
@@ -90,10 +95,13 @@ jobs:
             const data = await page.evaluate(i => window.DPRO_IZAKAYA_FIRST10[i], index);
             assert(data && data.id === id, `${id}: canonical step mismatch`);
             const frame = await childFrame(page);
-            const expectedPath = new URL(data.route, BASE + '/tutorial.html').pathname;
+            const expectedPath = normalizePath(new URL(data.route, BASE + '/tutorial.html').pathname);
             await page.waitForFunction(path => {
-              const actual = document.querySelector('#dproIzTutorialFrame')?.contentWindow?.location?.pathname || '';
-              return actual === path || (path.endsWith('/index.html') && (actual === '/' || actual.endsWith('/')));
+              const raw = document.querySelector('#dproIzTutorialFrame')?.contentWindow?.location?.pathname || '/';
+              let actual = String(raw).replace(/\/+$/, '') || '/';
+              if (actual === '/index.html' || actual === '/index') actual = '/';
+              else actual = actual.replace(/\.html$/, '') || '/';
+              return actual === path;
             }, expectedPath, {timeout:15000});
             let selected = null;
             const deadline = Date.now() + 8000;
@@ -169,7 +177,7 @@ jobs:
             await waitStep(page,EXPECTED[0]);
             for(let i=1;i<=4;i++){ await page.locator('#dproIzNext').click(); await waitStep(page,EXPECTED[i]); }
             let frame = await childFrame(page);
-            assert(new URL(frame.url()).pathname.endsWith('/admin.html'),'Step5 is not on admin.html');
+            assert(normalizePath(new URL(frame.url()).pathname).endsWith('/admin'),'Step5 is not on admin route');
             await page.locator('#dproIzClose').click();
             await page.locator('#dproIzLaunchMain').waitFor({state:'visible'});
             const closedState = await page.evaluate(() => JSON.parse(localStorage.getItem('dpro_tutorial_izakaya_v1')));
@@ -177,7 +185,7 @@ jobs:
             await page.locator('#dproIzLaunchMain').click();
             await waitStep(page,EXPECTED[4]);
             frame=await childFrame(page);
-            assert(new URL(frame.url()).pathname.endsWith('/admin.html'),'Resume did not restore admin route');
+            assert(normalizePath(new URL(frame.url()).pathname).endsWith('/admin'),'Resume did not restore admin route');
 
             // Esc close.
             await page.keyboard.press('Escape');
