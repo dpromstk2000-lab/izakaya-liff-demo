@@ -151,9 +151,12 @@ jobs:
             assert(h, 'Touch drag handle missing');
             const cdp = await context.newCDPSession(page);
             const sx=h.x+h.width/2, sy=h.y+h.height/2;
+            // Mobile card starts near the bottom and is almost full width.
+            // Drag toward top-left so movement is measurable before viewport clamp.
+            const ex=8, ey=8;
             await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:sx,y:sy,radiusX:1,radiusY:1,force:1,id:1}]});
             for(let i=1;i<=8;i++){
-              const x=sx+(width-2-sx)*i/8, y=sy+(height-2-sy)*i/8;
+              const x=sx+(ex-sx)*i/8, y=sy+(ey-sy)*i/8;
               await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y,radiusX:1,radiusY:1,force:1,id:1}]});
             }
             await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
@@ -161,7 +164,7 @@ jobs:
             const after = await cardBox(page);
             assert(Math.abs(after.x-before.x)>10 || Math.abs(after.y-before.y)>10, 'Native touch drag did not move card');
             assert(insideViewport(after,width,height), 'Native touch viewport clamp failed');
-            return {method:'CDP native touch',before,after};
+            return {method:'CDP native touch to top-left',before,after};
           }
           async function functionalQA(page, view) {
             const resolved=[];
