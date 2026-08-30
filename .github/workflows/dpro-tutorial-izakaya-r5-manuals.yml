@@ -422,7 +422,7 @@ jobs:
         run: |
           set -euo pipefail
           cat > r5-work/qa-manuals.py <<'PY'
-          import os, json, glob, hashlib
+          import os, json, glob, hashlib, time, urllib.request
           from pypdf import PdfReader
           from PIL import Image, ImageStat
           import cv2
@@ -431,7 +431,15 @@ jobs:
           DETAIL=os.path.join('r5-work','qa-input',os.environ['DETAIL_NAME'])
           TUTORIAL=os.environ['TUTORIAL_URL']
           GUIDE=os.environ['GUIDE_URL']
+          LIVE_BASE=os.environ['LIVE_BASE'].rstrip('/')
           mode=open('r5-work/mode.txt',encoding='utf-8').read().strip()
+
+          def sha256_file(path):
+              h=hashlib.sha256()
+              with open(path,'rb') as f:
+                  for chunk in iter(lambda:f.read(1024*1024),b''):
+                      h.update(chunk)
+              return h.hexdigest()
 
           def check_pdf(path,expected_pages):
               r=PdfReader(path)
@@ -444,43 +452,107 @@ jobs:
                   dims.append([w,h])
               return dims
 
+          def decode_qrs_robust(path):
+              arr=cv2.imread(path)
+              assert arr is not None,path
+              H,W=arr.shape[:2]
+              regions=[('full',arr)]
+              # Render output is fixed A4 portrait at 180 dpi (1489 x 2105).
+              # Include targeted fallback around Quick Start's lower-left QR because
+              # OpenCV can miss it when the entire mostly-white page is supplied.
+              if H>=1880 and W>=300:
+                  regions.append(('quick-qr-fixed-render-crop',arr[1600:1880,40:300]))
+              # General fallbacks for other page placements.
+              regions += [
+                  ('bottom-mid',arr[int(H*0.65):int(H*0.96), int(W*0.22):int(W*0.78)]),
+                  ('bottom-right',arr[int(H*0.65):int(H*0.96), int(W*0.62):W]),
+                  ('middle-left',arr[int(H*0.25):int(H*0.75), 0:int(W*0.45)]),
+                  ('middle-right',arr[int(H*0.25):int(H*0.75), int(W*0.45):W]),
+              ]
+              found=[]
+              for region_name,img in regions:
+                  if img.size==0: continue
+                  detector=cv2.QRCodeDetector()
+                  value, points, _ = detector.detectAndDecode(img)
+                  if value:
+                      found.append({'value':value,'region':region_name,'decoder':'single'})
+                  try:
+                      ok, info, points, _ = detector.detectAndDecodeMulti(img)
+                      if ok:
+                          for value in info:
+                              if value:
+                                  found.append({'value':value,'region':region_name,'decoder':'multi'})
+                  except Exception:
+                      pass
+              unique=[]
+              seen=set()
+              for item in found:
+                  if item['value'] not in seen:
+                      unique.append(item); seen.add(item['value'])
+              return unique
+
+          def wait_public_pdf(name,local_path):
+              local_hash=sha256_file(local_path)
+              url=f'{LIVE_BASE}/{name}'
+              last=None
+              for attempt in range(1,91):
+                  try:
+                      req=urllib.request.Request(url,method='GET',headers={'User-Agent':'DPRO-R5-QA'})
+                      with urllib.request.urlopen(req,timeout=20) as resp:
+                          body=resp.read()
+                          got=hashlib.sha256(body).hexdigest()
+                          last={'status':resp.status,'bytes':len(body),'sha256':got}
+                          if resp.status==200 and body.startswith(b'%PDF-') and got==local_hash:
+                              return {'url':url,'status':200,'pdf_magic':True,'sha256':got,'hash_match':True,'attempt':attempt}
+                  except Exception as e:
+                      last={'error':repr(e)}
+                  time.sleep(5)
+              raise AssertionError((url,'public PDF did not reach exact local hash',local_hash,last))
+
           qdims=check_pdf(QUICK,1)
           ddims=check_pdf(DETAIL,5)
 
-          renders=sorted(glob.glob('r5-work/renders/quick/*.png'))+sorted(glob.glob('r5-work/renders/detail/*.png'))
-          assert len(renders)==6
+          quick_renders=sorted(glob.glob('r5-work/renders/quick/*.png'))
+          detail_renders=sorted(glob.glob('r5-work/renders/detail/*.png'))
+          assert len(quick_renders)==1
+          assert len(detail_renders)==5
+          renders=quick_renders+detail_renders
+
+          expected_by_path={
+              quick_renders[0]:[TUTORIAL],
+              detail_renders[0]:[GUIDE],
+              detail_renders[1]:[],
+              detail_renders[2]:[],
+              detail_renders[3]:[],
+              detail_renders[4]:[TUTORIAL],
+          }
+
           render_checks=[]
           decoded=[]
-          detector=cv2.QRCodeDetector()
-
           for p in renders:
               im=Image.open(p).convert('RGB')
               stat=ImageStat.Stat(im)
-              # Prevent accidental blank pages: require meaningful pixel variance.
               assert max(stat.var)>20,(p,stat.var)
-              arr=cv2.imread(p)
-              ok, info, points, _ = detector.detectAndDecodeMulti(arr)
-              vals=[v for v in (info if ok else []) if v]
-              decoded.extend({'page':p,'value':v} for v in vals)
-              render_checks.append({'page':p,'width':im.width,'height':im.height,'variance':max(stat.var),'qr':vals})
+              found=decode_qrs_robust(p)
+              values=[x['value'] for x in found]
+              expected=expected_by_path[p]
+              assert set(values)==set(expected),(p,values,expected)
+              for item in found:
+                  decoded.append({'page':p,**item})
+              render_checks.append({
+                  'page':p,'width':im.width,'height':im.height,
+                  'variance':max(stat.var),'qr':found,'expectedQr':expected,'qrPass':True
+              })
 
           values=[x['value'] for x in decoded]
-          # QR locations deliberately: Quick p1 Tutorial, Detailed p1 Guide, Detailed p5 Tutorial.
-          assert values.count(TUTORIAL)>=2,(values,TUTORIAL)
-          assert values.count(GUIDE)>=1,(values,GUIDE)
+          assert values.count(TUTORIAL)==2,(values,TUTORIAL)
+          assert values.count(GUIDE)==1,(values,GUIDE)
           assert all(v in {TUTORIAL,GUIDE} for v in values),values
 
           public_pdfs={}
           if mode=='PUBLISHED_VERIFY':
-              import urllib.request
-              for name in (os.environ['QUICK_NAME'],os.environ['DETAIL_NAME']):
-                  url=os.environ['LIVE_BASE'].rstrip('/')+'/'+name
-                  req=urllib.request.Request(url,method='GET',headers={'User-Agent':'DPRO-R5-QA'})
-                  with urllib.request.urlopen(req,timeout=20) as resp:
-                      body=resp.read(32)
-                      assert resp.status==200,(url,resp.status)
-                      assert body.startswith(b'%PDF-'),(url,body)
-                      public_pdfs[name]={'url':url,'status':resp.status,'pdf_magic':True}
+              for name,path in ((os.environ['QUICK_NAME'],QUICK),(os.environ['DETAIL_NAME'],DETAIL)):
+                  public_pdfs[name]=wait_public_pdf(name,path)
 
           report={
             'system':'IZAKAYA',
@@ -491,8 +563,8 @@ jobs:
             'r4GuideStillLive':'PASS',
             'first10Count':10,
             'guideCount':10,
-            'quickStart':{'a4Portrait':'PASS','pages':1,'dims':qdims},
-            'detailedManual':{'a4Portrait':'PASS','pages':5,'dims':ddims},
+            'quickStart':{'a4Portrait':'PASS','pages':1,'dims':qdims,'sha256':sha256_file(QUICK)},
+            'detailedManual':{'a4Portrait':'PASS','pages':5,'dims':ddims,'sha256':sha256_file(DETAIL)},
             'allPdfPagesRendered':'PASS',
             'renderChecks':render_checks,
             'qrDecoded':decoded,
@@ -504,14 +576,34 @@ jobs:
             'unsafeWriteRequest':0,
             'businessMutation':0,
             'publicPdfs':public_pdfs,
-            'manualVisualInspection':'PENDING_ASSISTANT_VISUAL_REVIEW'
+            'publicPdfHashMatch':'PASS' if mode=='PUBLISHED_VERIFY' else 'NOT_YET_PUBLISHED',
+            'manualVisualInspection':'PENDING_ASSISTANT_VISUAL_REVIEW_HASH_MATCH',
+            'R5_AUTOMATED':'PASS',
+            'R5':'PASS_PENDING_ASSISTANT_VISUAL_REVIEW_HASH_MATCH'
           }
-          report['R5']='PASS_PENDING_VISUAL_REVIEW' if mode=='PREP_BUILD' else 'PASS_PENDING_VISUAL_REVIEW_AND_HASH_MATCH'
           with open('r5-work/r5-qa.json','w',encoding='utf-8') as f:
               json.dump(report,f,ensure_ascii=False,indent=2)
           print(json.dumps(report,ensure_ascii=False,indent=2))
           PY
           python r5-work/qa-manuals.py
+
+      - name: Assert automated R5 QA report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          r=json.load(open('r5-work/r5-qa.json',encoding='utf-8'))
+          assert r['R5_AUTOMATED']=='PASS',r
+          assert r['allPdfPagesRendered']=='PASS',r
+          assert r['qrDecodeEveryRenderedQr']=='PASS',r
+          assert r['qrDestinationExactPublic']=='PASS',r
+          assert r['unsafeWriteRequest']==0,r
+          assert r['businessMutation']==0,r
+          if r['mode']=='PUBLISHED_VERIFY':
+              assert r['publicPdfHashMatch']=='PASS',r
+          print('R5 automated gates PASS; assistant visual/hash review remains external.')
+          PY
 
       - name: Package R5 evidence artifact
         if: always()
