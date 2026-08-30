@@ -13,5 +13,81 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f5f5f4}
 <body data-dpro-tutorial-host="1">
 <noscript><div class="noscript">このチュートリアルにはJavaScriptが必要です。</div></noscript>
 <script src="dpro-tutorial-first10.js"></script>
+<script>
+(() => {
+  'use strict';
+  let touchDrag = null;
+  let observer = null;
+  const clamp = (n,min,max) => Math.min(Math.max(n,min),max);
+
+  function touchById(list,id) {
+    for (const t of Array.from(list || [])) if (t.identifier === id) return t;
+    return null;
+  }
+
+  function clampCard(card) {
+    if (!card || card.dataset.moved !== '1') return;
+    const r = card.getBoundingClientRect();
+    card.style.left = clamp(r.left, 6, Math.max(6, innerWidth-r.width-6)) + 'px';
+    card.style.top = clamp(r.top, 6, Math.max(6, innerHeight-r.height-6)) + 'px';
+  }
+
+  function onTouchStart(e) {
+    const card = document.getElementById('dproIzTutorialCard');
+    if (!card || touchDrag) return;
+    // PointerEvent path already started successfully; do not duplicate it.
+    if (card.classList.contains('dpro-dragging')) return;
+    const t = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0]);
+    if (!t) return;
+    e.preventDefault();
+    const r = card.getBoundingClientRect();
+    card.dataset.moved = '1';
+    card.style.left = r.left + 'px';
+    card.style.top = r.top + 'px';
+    card.style.bottom = 'auto';
+    card.style.transform = 'none';
+    card.classList.add('dpro-dragging');
+    touchDrag = {id:t.identifier, dx:t.clientX-r.left, dy:t.clientY-r.top, card};
+  }
+
+  function onTouchMove(e) {
+    if (!touchDrag) return;
+    const t = touchById(e.touches, touchDrag.id) || touchById(e.changedTouches, touchDrag.id);
+    if (!t) return;
+    e.preventDefault();
+    const card = touchDrag.card;
+    const maxX = Math.max(6, innerWidth-card.offsetWidth-6);
+    const maxY = Math.max(6, innerHeight-card.offsetHeight-6);
+    card.style.left = clamp(t.clientX-touchDrag.dx, 6, maxX) + 'px';
+    card.style.top = clamp(t.clientY-touchDrag.dy, 6, maxY) + 'px';
+  }
+
+  function onTouchEnd(e) {
+    if (!touchDrag) return;
+    const ended = touchById(e.changedTouches, touchDrag.id);
+    if (!ended && e.type !== 'touchcancel') return;
+    e.preventDefault();
+    const card = touchDrag.card;
+    touchDrag = null;
+    card.classList.remove('dpro-dragging');
+    clampCard(card);
+  }
+
+  function bindHandle() {
+    const h = document.getElementById('dproIzDragHandle');
+    if (!h || h.dataset.dproTouchFallback === '1') return;
+    h.dataset.dproTouchFallback = '1';
+    h.addEventListener('touchstart', onTouchStart, {passive:false});
+  }
+
+  window.addEventListener('touchmove', onTouchMove, {passive:false});
+  window.addEventListener('touchend', onTouchEnd, {passive:false});
+  window.addEventListener('touchcancel', onTouchEnd, {passive:false});
+
+  observer = new MutationObserver(bindHandle);
+  observer.observe(document.body, {childList:true,subtree:true});
+  bindHandle();
+})();
+</script>
 </body>
 </html>
