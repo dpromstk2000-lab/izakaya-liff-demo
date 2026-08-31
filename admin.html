@@ -1344,6 +1344,8 @@
     }
 
     async function changeReservationStatus(reservationId, status) {
+      if(status === "confirmed" && !confirm("この予約を確定しますか？")) return;
+      if(status === "completed" && !confirm("この予約を来店済みにしますか？")) return;
       let reason = null;
 
       if (status === "cancelled_shop") {
