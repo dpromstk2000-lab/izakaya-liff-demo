@@ -1,0 +1,94 @@
+name: "DPRO SHOP Fix 20 IZAKAYA"
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/dpro-shop-fix-20-izakaya.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "dpro-shop-fix-20-izakaya"
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify audited source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          check() {
+            path="$1"; expected="$2"
+            test -f "$path" || { echo "Missing target: $path"; exit 31; }
+            got="$(git hash-object "$path")"
+            echo "$path  $got"
+            test "$got" = "$expected" || { echo "SOURCE SHA MISMATCH: $path expected=$expected got=$got"; exit 32; }
+          }
+          check 'admin.html' '55d816cae7f408f4e4628bd7a3514f0fbf75c500'
+          check 'owner-ipad.html' '1b953e0ab73b74d0a7889bc31c70c80c1e2107b4'
+
+      - name: Apply narrow confirmed fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, sys
+          
+          def read(path):
+              return Path(path).read_text(encoding="utf-8")
+          
+          def write(path, text):
+              Path(path).write_text(text, encoding="utf-8")
+          
+          def replace_once(text, old, new, label):
+              n=text.count(old)
+              if n != 1:
+                  raise SystemExit(f"{label}: expected 1 exact match, found {n}")
+              return text.replace(old,new,1)
+          
+          def sub_once(text, pattern, repl, label, flags=0):
+              new,n=re.subn(pattern,repl,text,count=1,flags=flags)
+              if n != 1:
+                  raise SystemExit(f"{label}: expected 1 regex match, found {n}")
+              return new
+          
+          for p in ['admin.html','owner-ipad.html']:
+              t=read(p)
+              t=replace_once(t,
+          '''    async function changeReservationStatus(reservationId, status) {\n      let reason = null;''',
+          '''    async function changeReservationStatus(reservationId, status) {\n      if(status === "confirmed" && !confirm("この予約を確定しますか？")) return;\n      if(status === "completed" && !confirm("この予約を来店済みにしますか？")) return;\n      let reason = null;''',f'IZAKAYA {p} reservation guard')
+              write(p,t)
+          PY
+
+      - name: Validate source diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git diff --stat
+          git diff -- "admin.html" "owner-ipad.html"
+          if git diff --quiet -- "admin.html" "owner-ipad.html"; then
+            echo "No source change was produced."
+            exit 41
+          fi
+
+      - name: Commit fix to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "admin.html" "owner-ipad.html"
+          git diff --cached --check
+          git commit -m "Fix izakaya reservation status guards"
+          git push origin HEAD:main
