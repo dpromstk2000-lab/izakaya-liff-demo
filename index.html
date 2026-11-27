@@ -129,6 +129,7 @@
 
 <meta name="robots" content="noindex,nofollow,noarchive">
 <link rel="canonical" href="https://dpro-shop.com/systems/izakaya">
+<script src="./izakaya-public-demo-r1.js?v=1"></script>
 </head>
 
 <body class="bg-stone-100 text-slate-800 min-h-screen pb-24 izakaya-operation-demo-page izakaya-operation-customer">
@@ -1218,7 +1219,10 @@
 
     async function submitReservationConfirmed() {
       if (IS_EMBED_DEMO) {
-        alert("これは製品紹介用デモです。予約リクエストは送信されません。");
+        const p = pendingReservationPayload || buildReservationPayload(true); // IZAKAYA_R1_LOCAL
+        if (!p || p.reserveDate < getTodayDateString() || !p.reserveTime) return;
+        myReservations.unshift({id:'local-demo-'+Date.now(),reservation_name:p.reservationName,reserve_date:p.reserveDate,reserve_time:p.reserveTime,party_size:p.partySize,seat_type:p.seatType,preferences:p.preferences,shift_code:'dinner',shift_label:'夜営業',status:'pending'});
+        pendingReservationPayload=null;closeReservationConfirmModal();renderMyReservations();showToast('DEMO：仮予約を画面内で登録しました（送信なし）');
         return;
       }
 
@@ -1454,7 +1458,7 @@
 
     async function cancelReservation(reservationId) {
       if (IS_EMBED_DEMO) {
-        alert("これは製品紹介用デモです。予約キャンセルは実行されません。");
+        myReservations=myReservations.filter(r=>r.id!==reservationId);renderMyReservations();showToast('DEMO：画面内でキャンセルしました（送信なし）');
         return;
       }
 
@@ -1529,7 +1533,9 @@
 
     async function submitChangeReservation() {
       if (IS_EMBED_DEMO) {
-        alert("これは製品紹介用デモです。予約変更は実行されません。");
+        const id=document.getElementById('change-old-reservation-id').value;const r=myReservations.find(x=>x.id===id);const name=document.getElementById('change-reservation-name').value.trim();const d=document.getElementById('change-date').value;const n=Number(document.getElementById('change-party-size').value);
+        if(!r||!name||name.length>80||!d||d<getTodayDateString()||!selectedChangeTime||n<1){document.getElementById('change-result').innerText='予約名・日付・時間・人数を確認してください。';return;}
+        Object.assign(r,{reservation_name:name,reserve_date:d,reserve_time:selectedChangeTime,party_size:n,seat_type:document.getElementById('change-seat-type').value});closeChangeModal();renderMyReservations();showToast('DEMO：画面内で予約変更しました（送信なし）');
         return;
       }
 

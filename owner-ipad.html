@@ -172,6 +172,7 @@
 
 <meta name="robots" content="noindex,nofollow,noarchive">
 <link rel="canonical" href="https://dpro-shop.com/systems/izakaya">
+<script src="./izakaya-public-demo-r1.js?v=1"></script>
 </head>
 
 <body class="text-stone-800 min-h-screen safe-bottom izakaya-operation-demo-page izakaya-operation-ipad">
@@ -419,6 +420,7 @@
     }
 
     function getPcAdminUrl() {
+      if (IS_EMBED_DEMO) return new URL("admin.html?embed_demo=1", location.href).toString(); // IZAKAYA_R1_RETURN
       const saved = localStorage.getItem(PC_RETURN_URL_KEY);
       if (saved) return saved;
       const adminUrl = new URL("admin.html", location.href);
