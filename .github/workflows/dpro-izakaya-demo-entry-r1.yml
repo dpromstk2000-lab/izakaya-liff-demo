@@ -1,0 +1,121 @@
+name: DPRO IZAKAYA DEMO R1
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/dpro-izakaya-demo-entry-r1.yml']
+permissions:
+  contents: write
+concurrency:
+  group: dpro-izakaya-demo-entry-r1
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install QA tools
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-noto-cjk
+      - name: Patch and verify
+        run: |
+          cat > izakaya-public-demo-r1.js <<'JS'
+          (()=>{'use strict';
+          if(new URLSearchParams(location.search).get('embed_demo')!=='1')return;
+          const date=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+          const shifts=Array.from({length:7},(_,dow)=>({dow,shift_code:'dinner',shift_label:'夜営業',is_enabled:true,is_closed:false,open_time:'17:00',close_time:'22:00',last_order_time:'21:30',slot_interval_minutes:30,max_guests_per_slot:20,max_groups_per_slot:8}));
+          const rows=d=>[{id:'iz-demo-1',reservation_name:'デモ 太郎',reserve_date:d,reserve_time:'18:00:00',party_size:4,seat_type:'table',shift_code:'dinner',shift_label:'夜営業',status:'confirmed',customer_status:'regular',preferences:[]},{id:'iz-demo-2',reservation_name:'デモ 花子',reserve_date:d,reserve_time:'19:00:00',party_size:2,seat_type:'counter',shift_code:'dinner',shift_label:'夜営業',status:'pending',customer_status:'new',preferences:[]}];
+          const original=window.fetch.bind(window);const respond=(data,status=200)=>Promise.resolve(new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json'}}));
+          window.fetch=(resource,options={})=>{const u=new URL(typeof resource==='string'?resource:resource.url||String(resource),location.href);const method=String(options.method||(resource instanceof Request?resource.method:'GET')).toUpperCase();
+          if(u.pathname.startsWith('/api/')&&u.origin===location.origin){if(method!=='GET')return respond({ok:false,error:'公開DEMOでは実データを変更しません。'},403);const d=u.searchParams.get('date')||date();switch(u.pathname){case '/api/public/status':return respond({ok:true,status:{status:'open',message:'空席あり（サンプル）'}});case '/api/public/settings':return respond({ok:true,shop:{booking_window_months:3},businessShifts:shifts,businessHours:shifts,specialDays:[],specialDayShifts:[]});case '/api/admin/day':return respond({ok:true,reservations:rows(d),summary:{count:2,guests:6,pending:1,confirmed:1}});case '/api/admin/notifications/summary':return respond({ok:true,summary:{queuedCount:0,failedCount:0,queuedByType:{}}});case '/api/admin/business-shifts':return respond({ok:true,businessShifts:shifts});case '/api/admin/special-day-shifts':return respond({ok:true,specialDays:[],specialDayShifts:[]});default:return respond({ok:false,error:'公開DEMOの対象外です。'},403);}}
+          if(method!=='GET'&&method!=='HEAD')return respond({ok:false,error:'公開DEMOでは外部送信しません。'},403);return original(resource,options);};
+          function init(){const banner=document.getElementById('embed-demo-banner');if(!banner)return;const actions=banner.querySelector('.izakaya-operation-demo-actions');if(!actions)return;actions.replaceChildren();for(const [path,label] of [['index.html?embed_demo=1','予約するお客様'],['admin.html?embed_demo=1','店舗管理PC'],['owner-ipad.html?embed_demo=1','iPad営業ボード'],['demo-guide.html','DEMO一覧']]){const a=document.createElement('a');a.href=path;a.textContent=label;actions.append(a);}const copy=banner.querySelector('.izakaya-operation-demo-copy span');if(copy)copy.textContent='登録不要。架空データを使用し、実際の予約・店舗情報・LINEには反映されません。';}
+          if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();})();
+          JS
+          node --check izakaya-public-demo-r1.js
+          python - <<'PYCODE'
+          from pathlib import Path
+          import json,re,threading,http.server,functools
+          from playwright.sync_api import sync_playwright
+          qa=Path('izakaya-demo-qa');qa.mkdir(exist_ok=True)
+          pages=['index.html','admin.html','owner-ipad.html']
+          for name in pages:
+              p=Path(name);s=p.read_text();assert 'const IS_EMBED_DEMO = PAGE_PARAMS.get("embed_demo") === "1";' in s
+              assert 'embed-demo-banner' in s
+              if name!='index.html':assert 'IS_EMBED_DEMO && method !== "GET"' in s and 'adminToken = "1234";' in s
+              # Install fixture interception before original application script, so demo API calls never leave browser.
+              if 'izakaya-public-demo-r1.js' not in s:
+                  marker=re.search(r'<script>\s*[^<]*?const PAGE_PARAMS',s)
+                  # Insert at end of HEAD, before any body application scripts.
+                  assert '</head>' in s;s=s.replace('</head>','<script src="./izakaya-public-demo-r1.js?v=1"></script>\n</head>',1)
+              if name=='owner-ipad.html' and 'IZAKAYA_R1_RETURN' not in s:
+                  old='function getPcAdminUrl() {';assert old in s;s=s.replace(old,old+'\n      if (IS_EMBED_DEMO) return new URL("admin.html?embed_demo=1", location.href).toString(); // IZAKAYA_R1_RETURN',1)
+              if name=='index.html' and 'IZAKAYA_R1_LOCAL' not in s:
+                  old='alert("これは製品紹介用デモです。予約リクエストは送信されません。");'
+                  new='''const p = pendingReservationPayload || buildReservationPayload(true); // IZAKAYA_R1_LOCAL
+                  if (!p || p.reserveDate < getTodayDateString() || !p.reserveTime) return;
+                  myReservations.unshift({id:'local-demo-'+Date.now(),reservation_name:p.reservationName,reserve_date:p.reserveDate,reserve_time:p.reserveTime,party_size:p.partySize,seat_type:p.seatType,preferences:p.preferences,shift_code:'dinner',shift_label:'夜営業',status:'pending'});
+                  pendingReservationPayload=null;closeReservationConfirmModal();renderMyReservations();showToast('DEMO：仮予約を画面内で登録しました（送信なし）');'''
+                  assert s.count(old)==1;s=s.replace(old,new,1)
+                  old='alert("これは製品紹介用デモです。予約キャンセルは実行されません。");'
+                  new='''myReservations=myReservations.filter(r=>r.id!==reservationId);renderMyReservations();showToast('DEMO：画面内でキャンセルしました（送信なし）');'''
+                  assert s.count(old)==1;s=s.replace(old,new,1)
+                  old='alert("これは製品紹介用デモです。予約変更は実行されません。");'
+                  new='''const id=document.getElementById('change-old-reservation-id').value;const r=myReservations.find(x=>x.id===id);const name=document.getElementById('change-reservation-name').value.trim();const d=document.getElementById('change-date').value;const n=Number(document.getElementById('change-party-size').value);
+                  if(!r||!name||name.length>80||!d||d<getTodayDateString()||!selectedChangeTime||n<1){document.getElementById('change-result').innerText='予約名・日付・時間・人数を確認してください。';return;}
+                  Object.assign(r,{reservation_name:name,reserve_date:d,reserve_time:selectedChangeTime,party_size:n,seat_type:document.getElementById('change-seat-type').value});closeChangeModal();renderMyReservations();showToast('DEMO：画面内で予約変更しました（送信なし）');'''
+                  assert s.count(old)==1;s=s.replace(old,new,1)
+              p.write_text(s)
+          p=Path('demo-guide.html');s=p.read_text();assert all(x+'?embed_demo=1' in s for x in pages);s=s.replace('更新処理を停止した閲覧・操作確認用モード','架空データ専用。予約・変更・取消は予約画面内のみ。本番反映なし。').replace('LINE予約から確認する','登録不要で予約を体験する');p.write_text(s)
+          # Serve existing HTML and verify actual demo code against local fixtures. Abort external traffic including LINE/CDN; no real API access.
+          class Quiet(http.server.SimpleHTTPRequestHandler):
+              def log_message(self,*args):pass
+          server=http.server.ThreadingHTTPServer(('127.0.0.1',0),functools.partial(Quiet,directory=str(Path.cwd())));threading.Thread(target=server.serve_forever,daemon=True).start();base=f'http://127.0.0.1:{server.server_port}/';results=[]
+          with sync_playwright() as pw:
+              b=pw.chromium.launch(args=['--no-sandbox'])
+              for name in pages:
+                  for width in [390,1440]:
+                      page=b.new_page(viewport={'width':width,'height':900});network=[]
+                      def route(r):
+                          if r.request.url.startswith(base) and '/api/' not in r.request.url:r.continue_()
+                          else:network.append(r.request.url);r.abort()
+                      page.route('**/*',route);page.goto(base+name+'?embed_demo=1',wait_until='load');page.wait_for_function("document.querySelectorAll('#embed-demo-banner .izakaya-operation-demo-actions a').length===4")
+                      assert page.evaluate("async()=>{const r=await fetch('/api/public/status');return (await r.json()).ok}")
+                      assert page.evaluate("async()=>{const r=await fetch('/api/admin/demo-reset',{method:'POST'});return r.status===403}")
+                      assert not any('/api/' in x for x in network),network
+                      if name=='index.html':
+                          page.wait_for_function("document.querySelectorAll('#slot-list .slot-btn').length>0")
+                          page.evaluate("() => {document.getElementById('reservation-name').value='検証デモ';selectReserveTime('18:00');submitReservation();submitReservationConfirmed()}")
+                          assert '検証デモ' in page.locator('#my-reservation-list').inner_text()
+                          page.evaluate("() => {const r=myReservations.find(x=>x.reservation_name==='検証デモ');openChangeModal(r.id);document.getElementById('change-party-size').value='3';submitChangeReservation()}")
+                          assert page.evaluate("myReservations.find(x=>x.reservation_name==='検証デモ').party_size===3")
+                          page.evaluate("() => cancelReservation(myReservations.find(x=>x.reservation_name==='検証デモ').id)")
+                          assert '検証デモ' not in page.locator('#my-reservation-list').inner_text()
+                      elif name=='admin.html':page.wait_for_function("document.querySelector('#reservation-list').textContent.includes('デモ 太郎')")
+                      else:assert page.evaluate("getPcAdminUrl().endsWith('admin.html?embed_demo=1')")
+                      results.append({'page':name,'width':width,'fixture_and_write_guard':'PASS'});page.close()
+                  page=b.new_page();page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(base) and '/api/' not in r.request.url else r.abort());page.goto(base+name,wait_until='load');assert page.locator('#embed-demo-banner .izakaya-operation-demo-actions a').count()==2;results.append({'page':name,'normal_mode_unchanged':'PASS'});page.close()
+              b.close()
+          server.shutdown();(qa/'RESULT.json').write_text(json.dumps({'checks':results,'real_api_requests':0,'business_mutation':0},ensure_ascii=False,indent=2));print(json.dumps(results,ensure_ascii=False))
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: DPRO-IZAKAYA-DEMO-R1-QA
+          path: izakaya-demo-qa/
+          if-no-files-found: warn
+      - name: Commit verified files only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- index.html admin.html owner-ipad.html demo-guide.html izakaya-public-demo-r1.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'DPRO IZAKAYA DEMO R1'
+          git push origin HEAD:main
